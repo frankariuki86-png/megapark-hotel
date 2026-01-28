@@ -1,0 +1,137 @@
+/* Basic Reset */
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0;
+}
+
+img {
+  border-radius: 12px;
+  transition: transform 0.4s ease;
+}
+
+img:hover {
+  transform: scale(1.1);
+}
+
+html, body {
+  height: 100%; 
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; 
+  color: black;
+  background: #ffffff; 
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { 
+  color: inherit; 
+  text-decoration: none; 
+}
+
+/* Main layout - account for fixed header */
+main {
+  padding-top: 90px;
+}
+
+/* Layout helpers */
+.container { 
+  max-width: 1500px; 
+  margin: 0 auto; 
+  padding: 0 20px; 
+}
+
+.section { 
+  padding: 56px 0; 
+}
+
+/* Button Styles */
+.btn { 
+  position: relative;
+  background: rgb(110, 241, 110);
+  color: black; 
+  padding: 10px 16px; 
+  border-radius: 8px; 
+  display: inline-block; 
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 100;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  background: rgb(90, 221, 90);
+  transform: translateY(-2px);
+}
+
+.btn.add-food {
+  width: 150px;
+}
+
+.btn.book-btn {
+  background: rgb(110, 241, 110);
+  color: white;
+  border: none;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Link Styles */
+.link-primary {
+  color: #007bff;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-primary:hover {
+  color: #0056b3;
+}
+
+/* Form Styles */
+form {
+  display: grid; 
+  gap: 12px;
+}
+
+input, select, textarea {
+  width: 100%; 
+  padding: 12px 14px; 
+  border: 1px solid #cbd5e1; 
+  border-radius: 10px; 
+  font: inherit;
+  font-family: inherit;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 3px solid #cbd5e1; 
+  border-color: #006bb3;
+}
+
+/* Utilities */
+.small { 
+  font-size: 13px; 
+  opacity: 0.8; 
+}
+
+.product-spacer {
+  flex: 1;
+}
+
+.added-to-cart {
+  color: rgb(25, 135, 84);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.added-to-cart.show {
+  opacity: 1;
+}
+
+.product-quantity-container {
+  width: 100px;
+}
