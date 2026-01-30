@@ -31,6 +31,21 @@ const Header = () => {
     setMobileNavOpen(false);
   };
 
+  const handleSectionClick = (sectionId) => {
+    handleNavLinkClick();
+    // If not on home page, navigate to home with the section hash
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/megapark-hotel/' && currentPath !== '/megapark-hotel') {
+      window.location.href = `/#${sectionId}`;
+    } else {
+      // Already on home page, just scroll to section
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <>
       <header className="site-header">
@@ -52,12 +67,12 @@ const Header = () => {
           <nav id="mainNav" className={`main-nav ${mobileNavOpen ? 'open' : ''}`}>
             <ul>
               <li><Link to="/" onClick={handleNavLinkClick}>Home</Link></li>
-              <li><a href="/#about" onClick={handleNavLinkClick}>About Us</a></li>
-              <li><a href="/#menu" onClick={handleNavLinkClick}>Menu</a></li>
-              <li><a href="/#events" onClick={handleNavLinkClick}>Events</a></li>
-              <li><a href="/#halls" onClick={handleNavLinkClick}>Halls</a></li>
-              <li><a href="/#rooms" onClick={handleNavLinkClick}>Accommodation</a></li>
-              <li><a href="/#contact" onClick={handleNavLinkClick}>Contact</a></li>
+              <li><a href="#about" onClick={(e) => { e.preventDefault(); handleSectionClick('about'); }}>About Us</a></li>
+              <li><a href="#menu" onClick={(e) => { e.preventDefault(); handleSectionClick('menu'); }}>Menu</a></li>
+              <li><a href="#events" onClick={(e) => { e.preventDefault(); handleSectionClick('events'); }}>Events</a></li>
+              <li><a href="#halls" onClick={(e) => { e.preventDefault(); handleSectionClick('halls'); }}>Halls</a></li>
+              <li><a href="#rooms" onClick={(e) => { e.preventDefault(); handleSectionClick('rooms'); }}>Accommodation</a></li>
+              <li><a href="#contact" onClick={(e) => { e.preventDefault(); handleSectionClick('contact'); }}>Contact</a></li>
               {user ? (
                 <>
                   <li><Link to="/profile" className="nav-link" onClick={handleNavLinkClick}>👤 {user.firstName}</Link></li>
