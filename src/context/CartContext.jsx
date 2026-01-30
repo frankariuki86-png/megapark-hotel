@@ -61,8 +61,25 @@ export const CartProvider = ({ children }) => {
     return cart.reduce((count, item) => count + item.quantity, 0);
   }, [cart]);
 
-  const placeOrder = useCallback(() => {
-    if (cart.length === 0) return null;
+  const getCartTotalForType = useCallback((type) => {
+    return cart
+      .filter(item => item.type === type)
+      .reduce((total, item) => total + (item.price * item.quantity), 0);
+  }, [cart]);
+
+  const getCartCountForType = useCallback((type) => {
+    return cart
+      .filter(item => item.type === type)
+      .reduce((count, item) => count + item.quantity, 0);
+  }, [cart]);
+
+  // Place an order for menu (food) items only. If paymentMethod is 'before',
+  // paymentData should be provided and paymentStatus will be 'paid'. For
+  // 'after', paymentStatus will be 'pending'. Delivery is free; deliveryDate
+  // defaults to today.
+  const placeMenuOrder = useCallback(({ paymentMethod = 'after', paymentData = null, deliveryDate = null } = {}) => {
+    const menuItems = cart.filter(item => item.type === 'food');
+    if (menuItems.length === 0) return null;
 
     const orderId = `ORD-${Date.now()}`;
     const orderDate = new Date();
@@ -72,34 +89,55 @@ export const CartProvider = ({ children }) => {
       day: 'numeric'
     });
 
-    // Calculate estimated delivery date (3-5 business days)
-    const estimatedDelivery = new Date(orderDate);
-    estimatedDelivery.setDate(estimatedDelivery.getDate() + 3);
+    const delivery = deliveryDate ? new Date(deliveryDate) : orderDate;
 
     const newOrder = {
       id: orderId,
+      type: 'menu',
       date: orderDateFormatted,
       dateTime: orderDate.toISOString(),
-      items: [...cart],
-      total: getCartTotal(),
-      status: 'confirmed', // confirmed, processing, shipped, delivered
-      estimatedDelivery: estimatedDelivery.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
+      items: menuItems,
+      total: menuItems.reduce((t, it) => t + (it.price * it.quantity), 0),
+      status: paymentMethod === 'before' ? 'confirmed' : 'processing',
+      paymentMethod,
+      paymentStatus: paymentMethod === 'before' ? 'paid' : 'pending',
+      paymentData: paymentData || null,
+      deliveryDate: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      estimatedDelivery: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       tracking: {
-        stage: 1, // 1: confirmed, 2: processing, 3: shipped, 4: delivered
+        stage: paymentMethod === 'before' ? 1 : 1,
         lastUpdate: orderDate.toISOString(),
         location: 'Order processing facility'
       }
     };
 
+    // remove only the menu items from the cart
+    setCart(prev => prev.filter(item => item.type !== 'food'));
     setOrders(prevOrders => [newOrder, ...prevOrders]);
-    clearCart();
-    
     return newOrder;
-  }, [cart, getCartTotal, clearCart]);
+  }, [cart]);
+
+  // Create a booking (room/hall) after successful payment
+  const addBooking = useCallback((booking, paymentData = null) => {
+    const orderId = `BOOK-${Date.now()}`;
+    const orderDate = new Date();
+
+    const newBooking = {
+      id: orderId,
+      type: booking.type || 'booking',
+      date: orderDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      dateTime: orderDate.toISOString(),
+      items: [booking],
+      total: booking.price || 0,
+      status: 'booked',
+      paymentStatus: paymentData ? 'paid' : 'pending',
+      paymentData: paymentData || null,
+      tracking: { stage: 1, lastUpdate: orderDate.toISOString(), location: 'Booking confirmed' }
+    };
+
+    setOrders(prev => [newBooking, ...prev]);
+    return newBooking;
+  }, []);
 
   const value = {
     cart,
@@ -110,7 +148,10 @@ export const CartProvider = ({ children }) => {
     clearCart,
     getCartTotal,
     getCartCount,
-    placeOrder
+    getCartTotalForType,
+    getCartCountForType,
+    placeMenuOrder,
+    addBooking
   };
 
   return (

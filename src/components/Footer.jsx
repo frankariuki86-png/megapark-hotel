@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import '../styles/footer.css';
 
 const Footer = () => {
@@ -44,7 +45,7 @@ const Footer = () => {
 
         <div className="copy">
           <span>© <span id="year"></span> Megapark Resort— All rights reserved.</span>
-          <a href="#top">Back to top ↑</a>
+          <Link to="/">Back to top ↑</Link>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

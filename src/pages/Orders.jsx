@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import '../styles/orders.css';
 
@@ -48,7 +49,7 @@ const Orders = () => {
           <div className="page-title">Your Orders</div>
           <div className="empty-orders-message">
             <p>You haven't placed any orders yet.</p>
-            <a href="/#menu" className="btn" style={{ marginTop: '20px' }}>Start Shopping</a>
+            <Link to="/" className="btn" style={{ marginTop: '20px', display: 'inline-block' }}>Start Shopping</Link>
           </div>
         </div>
       </div>

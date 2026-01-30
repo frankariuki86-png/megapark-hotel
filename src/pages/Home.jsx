@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
+import RoomBooking from '../components/RoomBooking';
+import HallBooking from '../components/HallBooking';
+import EventBooking from '../components/EventBooking';
 import '../styles/home.css';
+
+const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
+const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
 const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -9,14 +15,14 @@ const Home = () => {
 
   const slides = [
     {
-      image: '/images/home1.jfif',
+      image: getImagePath('home1.jfif'),
       title: 'Welcome to Megapark Resort.',
       description: 'Relax in comfort, enjoy authentic Kenyan cuisine, and create unforgettable memories.',
       ctaText: 'Explore the Resort',
       ctaLink: '#prices'
     },
     {
-      image: '/images/home 2.jfif',
+      image: getImagePath('home 2.jfif'),
       title: 'Authentic Kenyan & Continental Cuisine.',
       description: 'Freshly prepared meals, local flavors, and a dining experience you\'ll love.',
       ctaText: 'View Our Menu',
@@ -30,21 +36,21 @@ const Home = () => {
       ctaLink: '#rooms'
     },
     {
-      image: '/images/mega-park4.jfif',
+      image: getImagePath('mega-park4.jfif'),
       title: 'Perfect Venue for Events',
       description: 'Weddings, conferences, and celebrations in a serene environment.',
       ctaText: 'Host an Event',
       ctaLink: '#events'
     },
     {
-      image: '/images/megapark5.jfif',
+      image: getImagePath('megapark5.jfif'),
       title: 'Relax & Unwind',
       description: 'Escape the noise and enjoy peaceful moments in nature.',
       ctaText: 'Discover More',
       ctaLink: '#about'
     },
     {
-      image: '/images/megapark6.jfif',
+      image: getImagePath('megapark6.jfif'),
       title: 'Family-Friendly Experience',
       description: 'Fun, comfort, and safety for the whole family.',
       ctaText: 'Plan Your Visit',
@@ -58,28 +64,28 @@ const Home = () => {
       name: 'Nyama Choma',
       description: 'Grilled Kenyan beef served with ugali and kachumbari.',
       price: 1200,
-      image: '/images/Nyama-Choma-1-1080x1080.jpg.webp'
+      image: getImagePath('Nyama-Choma-1-1080x1080.jpg.webp')
     },
     {
       id: 'chapati-nyama',
       name: 'Chapati & Nyama',
       description: 'Classic chapati meal with meat and greens.',
       price: 1000,
-      image: '/images/chapati nyama.png'
+      image: getImagePath('chapati nyama.png')
     },
     {
       id: 'matoke-beef',
       name: 'Matoke & beef',
       description: 'Spiced beef matoke and kachumbari.',
       price: 1200,
-      image: '/images/matoke.png'
+      image: getImagePath('matoke.png')
     },
     {
       id: 'fish-ugali',
       name: 'Ugali & fish',
       description: 'Grilled Kenyan fish served with ugali and greens.',
       price: 1300,
-      image: '/images/fish.webp'
+      image: getImagePath('fish.webp')
     }
   ];
 
@@ -88,19 +94,19 @@ const Home = () => {
       id: 'banquet',
       name: 'Banquet Hall',
       description: 'Spacious hall for weddings and large events, accommodating up to 200 guests.',
-      image: '/images/hall 1.webp'
+      image: getImagePath('hall 1.webp')
     },
     {
       id: 'conference',
       name: 'Conference Room',
       description: 'Modern conference room equipped with AV facilities for business meetings.',
-      image: '/images/hall 2.webp'
+      image: getImagePath('hall 2.webp')
     },
     {
       id: 'pavilion',
       name: 'Outdoor Pavilion',
       description: 'Beautiful outdoor space perfect for garden parties and casual gatherings.',
-      image: '/images/hall 3.webp'
+      image: getImagePath('hall 3.webp')
     }
   ];
 
@@ -110,21 +116,21 @@ const Home = () => {
       name: 'Standard Room',
       description: 'Comfortable room with essential amenities for a relaxing stay.',
       price: 5000,
-      image: '/images/stardard rooms.webp'
+      image: getImagePath('stardard rooms.webp')
     },
     {
       id: 'deluxe',
       name: 'Deluxe Room',
       description: 'Spacious room with premium amenities and a beautiful view.',
       price: 8000,
-      image: '/images/Deluxe Room.webp'
+      image: getImagePath('Deluxe Room.webp')
     },
     {
       id: 'executive',
       name: 'Executive Suite',
       description: 'Luxurious suite with premium amenities and stunning views.',
       price: 12000,
-      image: '/images/Executive Suite.webp'
+      image: getImagePath('Executive Suite.webp')
     }
   ];
 
@@ -151,6 +157,7 @@ const Home = () => {
   const handleAddToCart = (item, quantity = 1) => {
     addToCart({
       ...item,
+      type: 'food',
       quantity: parseInt(quantity)
     });
 
@@ -165,15 +172,6 @@ const Home = () => {
         [item.id]: false
       }));
     }, 2000);
-  };
-
-  const handleEventSubmit = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
-    console.log('Event booking request:', data);
-    alert('Event booking request submitted! We will contact you soon.');
-    e.target.reset();
   };
 
   const handleContactSubmit = (e) => {
@@ -219,7 +217,7 @@ const Home = () => {
             <p><strong>Megapark Resort</strong> is a serene getaway designed to offer comfort, relaxation, and memorable experiences. Nestled in a peaceful environment, we combine warm Kenyan hospitality with modern amenities to create a perfect destination for leisure and events. Our resort features comfortable accommodation, delicious authentic and continental cuisine, and well-designed spaces for weddings, conferences, and celebrations. Whether you are visiting to unwind, dine, or host a special occasion, Megapark Resort is committed to providing exceptional service and an unforgettable experience for every guest.</p>
           </div>
           <div className="about-photo">
-            <img src="/images/about.webp" alt="about-photo" />
+            <img src={getImagePath('about.webp')} alt="about-photo" />
           </div>
         </div>
       </section>
@@ -269,76 +267,13 @@ const Home = () => {
       </section>
 
       {/* Events Section */}
-      <section id="events" className="container section">
-        <h3>Event Booking</h3>
-        <div className="card">
-          <p>Plan your event with our team. Fill the form to request a quote.</p>
-          <form id="event-form" className="form-grid" onSubmit={handleEventSubmit}>
-            <input name="name" placeholder="Your name" required />
-            <input type="number" placeholder="phone number" required />
-            <input name="email" placeholder="Email" required />
-            <input name="date" type="date" required />
-            <select name="type" required>
-              <option>Wedding</option>
-              <option>pre-wedding</option>
-              <option>Conference</option>
-              <option>Party</option>
-            </select>
-            <textarea name="notes" placeholder="Notes (guests, requirements)"></textarea>
-            <button className="btn" type="submit">Request Quote</button>
-          </form>
-        </div>
-      </section>
+      <EventBooking />
 
       {/* Halls Section */}
-      <section id="halls" className="section halls container">
-        <h2>Event Halls</h2>
-        <div className="halls-grid">
-          {halls.map((hall) => (
-            <article key={hall.id} className="halls-card">
-              <div>
-                <img src={hall.image} alt={hall.name} />
-                <div className="halls-body">
-                  <h3>{hall.name}</h3>
-                  <p>{hall.description}</p>
-                  <br />
-                  <div className="card-meta">
-                    <div className="product-quantity-container">
-                      <button className="btn add-food">Book now</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <HallBooking />
 
       {/* Rooms Section */}
-      <section id="rooms" className="section rooms container">
-        <h2>Accommodation</h2>
-        <div className="rooms-grid">
-          {rooms.map((room) => (
-            <article key={room.id} className="rooms-card">
-              <div>
-                <img src={room.image} alt={room.name} />
-                <div className="rooms-body">
-                  <h3>{room.name}</h3>
-                  <p>{room.description}</p>
-                  <br />
-                  <strong>KES {room.price.toLocaleString()}/night</strong>
-                  <div className="card-meta">
-                    <div className="product-quantity-container">
-                      <br />
-                      <button className="btn add-food">Book now</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <RoomBooking />
 
       {/* Contact Section */}
       <section id="contact" style={{ background: '#f5f5f5' }}>

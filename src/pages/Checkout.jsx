@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
+import PaymentGateway from '../components/PaymentGateway';
 import '../styles/checkout.css';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart, updateCartItem, removeFromCart, getCartTotal, placeOrder } = useCart();
+  const { cart, updateCartItem, removeFromCart, getCartTotalForType, getCartCountForType, placeMenuOrder } = useCart();
+  const { user, setIsAuthModalOpen } = useUser();
   const [selectedDelivery, setSelectedDelivery] = useState({});
   const [quantities, setQuantities] = useState({});
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   // Initialize quantities on component mount or when cart changes
   React.useEffect(() => {
     const newQuantities = {};
-    cart.forEach(item => {
+    cart.filter(i => i.type === 'food').forEach(item => {
       newQuantities[item.id] = item.quantity;
     });
     setQuantities(newQuantities);
@@ -33,14 +37,43 @@ const Checkout = () => {
     removeFromCart(itemId);
   };
 
+  const [paymentMethod, setPaymentMethod] = React.useState('after');
+
+  const getCartTotal = () => {
+    return getCartTotalForType('food');
+  };
+
   const handlePlaceOrder = () => {
-    if (cart.length === 0) {
-      alert('Your cart is empty!');
+    const foodCount = getCartCountForType('food');
+    if (foodCount === 0) {
+      alert('Your cart has no food items to order!');
       return;
     }
-    const order = placeOrder();
+
+    if (!user) {
+      alert('Please login before placing an order');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (paymentMethod === 'before') {
+      setIsPaymentOpen(true);
+      return;
+    }
+
+    // pay after delivery (place order directly)
+    const order = placeMenuOrder({ paymentMethod: 'after' });
     if (order) {
       alert(`Order placed successfully! Order ID: ${order.id}`);
+      navigate('/orders');
+    }
+  };
+
+  const handlePaymentSuccess = (paymentData) => {
+    const order = placeMenuOrder({ paymentMethod: 'before', paymentData });
+    if (order) {
+      alert(`Order placed successfully! Order ID: ${order.id}\nPayment Method: ${paymentData.method}`);
+      setIsPaymentOpen(false);
       navigate('/orders');
     }
   };
@@ -60,13 +93,15 @@ const Checkout = () => {
     return deliveryOptions[0];
   };
 
-  if (cart.length === 0) {
+  const foodItems = cart.filter(i => i.type === 'food');
+
+  if (foodItems.length === 0) {
     return (
       <div className="checkout-page">
         <div className="page-title">Your Cart</div>
         <div className="empty-cart-message">
           <p>Your cart is empty. Start shopping!</p>
-          <a href="/#menu" className="btn" style={{ marginTop: '20px' }}>View Menu</a>
+          <Link to="/" className="btn" style={{ marginTop: '20px', display: 'inline-block' }}>View Menu</Link>
         </div>
       </div>
     );
@@ -78,10 +113,12 @@ const Checkout = () => {
 
       <div className="checkout-grid">
         <div className="order-summary">
-          {cart.map((item) => (
+          {foodItems.map((item) => (
             <div key={item.id} className="cart-item-container">
               <div className="delivery-date">
-                Delivery date: {getDeliveryDate(item.id, selectedDelivery[item.id]).date}
+                {item.type === 'food' && `Delivery date: ${getDeliveryDate(item.id, selectedDelivery[item.id]).date}`}
+                {item.type === 'room' && `Check-in: ${item.checkInDate} | Check-out: ${item.checkOutDate}`}
+                {item.type === 'hall' && `Event: ${item.formattedDateTime}`}
               </div>
 
               <div className="cart-item-details-grid">
@@ -89,37 +126,61 @@ const Checkout = () => {
 
                 <div className="cart-item-details">
                   <div className="product-name">{item.name}</div>
+                  {item.type === 'room' && (
+                    <div className="product-meta">
+                      <p>Nights: {item.nights} | Guests: {item.guests}</p>
+                      <p>Price per night: KES {item.roomPrice.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {item.type === 'hall' && (
+                    <div className="product-meta">
+                      <p>Package: {item.packageName} | Guests: {item.guestCount}</p>
+                      <p>Hall: KES {item.hallPrice.toLocaleString()} + Catering: KES {item.cateringPrice.toLocaleString()}</p>
+                    </div>
+                  )}
                   <div className="product-price">KES {item.price.toLocaleString()}.00</div>
-                  <div className="product-quantity">
-                    <span>
-                      Quantity: 
-                      <input 
-                        type="number" 
-                        min="1" 
-                        value={quantities[item.id] || item.quantity}
-                        onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                        style={{ width: '60px', padding: '4px 8px', marginLeft: '8px' }}
-                      />
-                    </span>
+                  {item.type === 'food' && (
+                    <div className="product-quantity">
+                      <span>
+                        Quantity: 
+                        <input 
+                          type="number" 
+                          min="1" 
+                          value={quantities[item.id] || item.quantity}
+                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                          style={{ width: '60px', padding: '4px 8px', marginLeft: '8px' }}
+                        />
+                      </span>
+                      <span
+                        className="delete-quantity-link link-primary"
+                        onClick={() => handleDelete(item.id)}
+                        style={{ marginLeft: '12px' }}
+                      >
+                        Delete
+                      </span>
+                    </div>
+                  )}
+                  {(item.type === 'room' || item.type === 'hall') && (
                     <span
                       className="delete-quantity-link link-primary"
                       onClick={() => handleDelete(item.id)}
-                      style={{ marginLeft: '12px' }}
                     >
-                      Delete
+                      Remove
                     </span>
-                  </div>
+                  )}
                 </div>
 
-                <div className="delivery-options">
-                  <div className="delivery-options-title">Delivery option:</div>
-                  <div className="delivery-option">
-                    <div>
-                      <div className="delivery-option-date">{deliveryOptions[0].date}</div>
-                      <div className="delivery-option-price">{deliveryOptions[0].price} Shipping</div>
+                {item.type === 'food' && (
+                  <div className="delivery-options">
+                    <div className="delivery-options-title">Delivery option:</div>
+                    <div className="delivery-option">
+                      <div>
+                        <div className="delivery-option-date">{deliveryOptions[0].date}</div>
+                        <div className="delivery-option-price">{deliveryOptions[0].price} Shipping</div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           ))}
@@ -130,7 +191,7 @@ const Checkout = () => {
 
           <div className="payment-summary-row">
             <div>Subtotal:</div>
-            <div className="payment-summary-money">KES {getCartTotal().toLocaleString()}.00</div>
+            <div className="payment-summary-money">KES {getCartTotalForType('food').toLocaleString()}.00</div>
           </div>
 
           <div className="payment-summary-row subtotal-row">
@@ -143,9 +204,22 @@ const Checkout = () => {
             <div className="payment-summary-money">KES {getCartTotal().toLocaleString()}.00</div>
           </div>
 
+          <div style={{ marginTop: '12px', marginBottom: '8px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Payment Method</label>
+            <label style={{ marginRight: '12px' }}>
+              <input type="radio" name="paymentMethod" value="after" checked={paymentMethod === 'after'} onChange={() => setPaymentMethod('after')} /> Pay after delivery
+            </label>
+            <label>
+              <input type="radio" name="paymentMethod" value="before" checked={paymentMethod === 'before'} onChange={() => setPaymentMethod('before')} /> Pay before delivery
+            </label>
+          </div>
+
           <button className="place-order-button" onClick={handlePlaceOrder}>
             Place your order
           </button>
+          {isPaymentOpen && (
+            <PaymentGateway isOpen={isPaymentOpen} total={getCartTotalForType('food')} onClose={() => setIsPaymentOpen(false)} onPaymentSuccess={handlePaymentSuccess} />
+          )}
         </div>
       </div>
     </div>
