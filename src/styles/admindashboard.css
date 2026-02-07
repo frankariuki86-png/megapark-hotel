@@ -399,6 +399,19 @@ tr:hover {
     padding: 20px;
   }
 
+
+/* Small UI polish */
+.menu-card { transition: transform 0.22s, box-shadow 0.22s; }
+.menu-card.editing { outline: 2px dashed rgba(102,126,234,0.25); background: linear-gradient(180deg,#fff 0%, #fbfdff 100%); }
+.menu-edit-form { display:flex; flex-direction:column; gap:8px; padding:12px; }
+.image-preview { max-width:120px; max-height:80px; display:block; margin-top:8px; border-radius:6px; box-shadow:0 3px 8px rgba(0,0,0,0.12); }
+.btn-export { background:#f3f4f6; border:1px solid #e5e7eb; padding:8px 10px; border-radius:6px; cursor:pointer; display:inline-flex; gap:8px; align-items:center; }
+.btn-export:hover { background:#eef2ff; }
+.edit-actions { display:flex; gap:8px; margin-top:8px; }
+
+/* subtle fade-in */
+.menu-card, .order-card, .stat-card { animation: fadeIn 240ms ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }

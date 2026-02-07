@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { ToastProvider } from '../components/Toast';
 import ChartMini from '../components/ChartMini';
 import '../styles/admindashboard.css';
+import { Edit, Trash2, Check, X, PlusCircle, LogOut, DownloadCloud, Search } from 'lucide-react';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ const AdminDashboard = () => {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [newMenuItem, setNewMenuItem] = useState({ name: '', description: '', category: 'mains', price: '', preparationTime: 15 });
   const [editingMenuItem, setEditingMenuItem] = useState(null);
+  const [editingValues, setEditingValues] = useState({});
+  const menuSearchRef = useRef(null);
 
   // UI enhancement states
   const [menuSearch, setMenuSearch] = useState('');
@@ -29,6 +32,35 @@ const AdminDashboard = () => {
   const pushToast = (msg, type='info') => {
     if (typeof window !== 'undefined' && window.__pushToastInternal) window.__pushToastInternal(msg, type)
     else console.log('TOAST', type, msg)
+  }
+  // CSV export helpers
+  const exportCSV = (rows, columns, filename = 'export.csv') => {
+    const header = columns.join(',') + '\n';
+    const body = rows.map(r => columns.map(c => {
+      const v = r[c] !== undefined && r[c] !== null ? String(r[c]) : '';
+      return '"' + v.replace(/"/g, '""') + '"';
+    }).join(',')).join('\n');
+    const blob = new Blob([header + body], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  const exportMenuCSV = () => {
+    const rows = filteredMenuItems.map(i => ({ id: i.id, name: i.name, description: i.description, category: i.category, price: i.price, availability: i.availability, preparationTime: i.preparationTime }));
+    exportCSV(rows, ['id','name','description','category','price','availability','preparationTime'], 'menu-items.csv');
+    pushToast('Menu exported as CSV', 'success');
+  }
+
+  const exportOrdersCSV = () => {
+    const rows = foodOrders.map(o => ({ id: o.id, customerName: o.customerName, status: o.status, totalAmount: o.totalAmount, createdAt: o.createdAt }));
+    exportCSV(rows, ['id','customerName','status','totalAmount','createdAt'], 'food-orders.csv');
+    pushToast('Orders exported as CSV', 'success');
   }
   useEffect(() => { setCurrentPage(1) }, [menuSearch, itemsPerPage]);
   const filteredMenuItems = useMemo(() => {
@@ -46,6 +78,26 @@ const AdminDashboard = () => {
     if (!q) return foodOrders;
     return foodOrders.filter(o => (o.customerName + ' ' + o.id + ' ' + (o.customerPhone||'')).toLowerCase().includes(q));
   }, [foodOrders, orderSearch]);
+
+  // keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setShowAddMenu(v => !v);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        menuSearchRef.current?.focus();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        exportMenuCSV();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // bulk selection helpers
   const toggleSelect = (id) => {
@@ -105,32 +157,20 @@ const AdminDashboard = () => {
       {/* Header */}
       <div className="admin-header">
         <div className="admin-header-left">
-          <h1>📊 Admin Dashboard</h1>
+          <h1>Admin Dashboard</h1>
           <p>Welcome, {adminUser.name}</p>
         </div>
-        <button className="logout-btn" onClick={handleLogout}>Logout</button>
+        <button className="logout-btn" onClick={handleLogout}><LogOut size={14} style={{marginRight:8}}/> Logout</button>
       </div>
 
       {/* Navigation Tabs */}
       <div className="admin-nav">
-        <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
-          📈 Overview
-        </button>
-        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} onClick={() => setActiveTab('rooms')}>
-          🛏️ Rooms
-        </button>
-        <button className={`tab-btn ${activeTab === 'bookings' ? 'active' : ''}`} onClick={() => setActiveTab('bookings')}>
-          📅 Bookings
-        </button>
-        <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
-          🎉 Events
-        </button>
-        <button className={`tab-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>
-          🍽️ Menu
-        </button>
-        <button className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
-          📦 Food Orders
-        </button>
+        <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
+        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} onClick={() => setActiveTab('rooms')}>Rooms</button>
+        <button className={`tab-btn ${activeTab === 'bookings' ? 'active' : ''}`} onClick={() => setActiveTab('bookings')}>Bookings</button>
+        <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>Events</button>
+        <button className={`tab-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>Menu</button>
+        <button className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>Food Orders</button>
       </div>
 
       {/* Content */}
@@ -330,15 +370,17 @@ const AdminDashboard = () => {
           <div className="menu-section">
             <div className="menu-header">
               <h2>Menu Management</h2>
-              <div style={{display:'flex',gap:12}}>
-                <input className="search-input" placeholder="Search menu items..." value={menuSearch} onChange={(e)=>setMenuSearch(e.target.value)} />
+              <div style={{display:'flex',gap:12, alignItems:'center'}}>
+                <Search size={16} />
+                <input ref={menuSearchRef} className="search-input" placeholder="Search menu items... (Ctrl+F)" value={menuSearch} onChange={(e)=>setMenuSearch(e.target.value)} />
                 <select value={sortBy} onChange={(e)=>setSortBy(e.target.value)} className="sort-select">
                   <option value="name">Sort: Name</option>
                   <option value="price">Sort: Price</option>
                 </select>
                 <button className="btn-add-menu" onClick={() => setShowAddMenu(!showAddMenu)}>
-                  {showAddMenu ? '✕ Cancel' : '+ Add Menu Item'}
+                  {showAddMenu ? <><X size={14}/> Cancel</> : <><PlusCircle size={14}/> Add Menu Item</>}
                 </button>
+                <button className="btn-export" onClick={() => exportMenuCSV()} title="Export menu as CSV"><DownloadCloud size={16}/> Export</button>
               </div>
             </div>
 
@@ -380,6 +422,18 @@ const AdminDashboard = () => {
                     value={newMenuItem.preparationTime}
                     onChange={(e) => setNewMenuItem({...newMenuItem, preparationTime: parseInt(e.target.value)})}
                   />
+                  <div>
+                    <label className="label">Image URL or Upload</label>
+                    <input type="text" placeholder="Image URL (optional)" value={newMenuItem.image || ''} onChange={(e)=>setNewMenuItem({...newMenuItem, image: e.target.value})} />
+                    <input type="file" accept="image/*" onChange={(e)=>{
+                      const f = e.target.files && e.target.files[0];
+                      if (!f) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev)=> setNewMenuItem(prev=>({...prev, image: ev.target.result}));
+                      reader.readAsDataURL(f);
+                    }} />
+                    {newMenuItem.image && <img src={newMenuItem.image} alt="preview" className="image-preview" />}
+                  </div>
                 </div>
                 <button className="btn-save-menu" onClick={() => {
                   if (newMenuItem.name && newMenuItem.price) {
@@ -420,44 +474,90 @@ const AdminDashboard = () => {
 
             <div className="menu-grid">
               {paginatedMenuItems.map(item => (
-                <div key={item.id} className="menu-card">
-                  <div className="menu-card-header">
-                    <div style={{display:'flex',alignItems:'center',gap:10}}>
-                      <input type="checkbox" checked={selectedMenuIds.has(item.id)} onChange={()=>toggleSelect(item.id)} />
-                      <h4>{item.name}</h4>
+                <div key={item.id} className={`menu-card ${editingMenuItem===item.id? 'editing':''}`}>
+                  {editingMenuItem === item.id ? (
+                    <div className="menu-edit-form">
+                      <input value={editingValues.name || ''} onChange={(e)=>setEditingValues(prev=>({...prev, name: e.target.value}))} />
+                      <input value={editingValues.description || ''} onChange={(e)=>setEditingValues(prev=>({...prev, description: e.target.value}))} />
+                      <select value={editingValues.category || item.category} onChange={(e)=>setEditingValues(prev=>({...prev, category: e.target.value}))}>
+                        <option value="appetizers">Appetizers</option>
+                        <option value="mains">Mains</option>
+                        <option value="sides">Sides</option>
+                        <option value="desserts">Desserts</option>
+                        <option value="drinks">Drinks</option>
+                      </select>
+                      <input type="number" value={editingValues.preparationTime || item.preparationTime} onChange={(e)=>setEditingValues(prev=>({...prev, preparationTime: parseInt(e.target.value)}))} />
+                      <div>
+                        <label className="label">Image</label>
+                        <input type="text" placeholder="Image URL" value={editingValues.image || item.image || ''} onChange={(e)=>setEditingValues(prev=>({...prev, image: e.target.value}))} />
+                        <input type="file" accept="image/*" onChange={(e)=>{
+                          const f = e.target.files && e.target.files[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev)=> setEditingValues(prev=>({...prev, image: ev.target.result}));
+                          reader.readAsDataURL(f);
+                        }} />
+                        {(editingValues.image || item.image) && <img src={editingValues.image || item.image} alt="preview" className="image-preview" />}
+                      </div>
+                      <div className="edit-actions">
+                        <button className="action-btn confirm" onClick={() => {
+                          const updates = {
+                            name: editingValues.name,
+                            description: editingValues.description,
+                            category: editingValues.category,
+                            preparationTime: editingValues.preparationTime,
+                            image: editingValues.image
+                          };
+                          updateMenuItem(item.id, updates);
+                          pushToast('Item updated', 'success');
+                          setEditingMenuItem(null);
+                          setEditingValues({});
+                        }}><Check size={14}/> Save</button>
+                        <button className="action-btn cancel" onClick={() => { setEditingMenuItem(null); setEditingValues({}); }}><X size={14}/> Cancel</button>
+                      </div>
                     </div>
-                    <span className={`availability-badge ${item.availability ? 'available' : 'unavailable'}`}>
-                      {item.availability ? '✓ Available' : '✕ Unavailable'}
-                    </span>
-                  </div>
-                  <p className="menu-description">{item.description}</p>
-                  <div className="menu-details">
-                    <span><strong>Category:</strong> {item.category}</span>
-                    <span><strong>Prep Time:</strong> {item.preparationTime} min</span>
-                  </div>
-                  <div className="menu-price">
-                    <strong>KES {item.price.toLocaleString()}</strong>
-                  </div>
-                  <div className="menu-actions">
-                    <input
-                      type="number"
-                      className="price-input"
-                      placeholder="New price"
-                      onBlur={(e) => {
-                        if (e.target.value) {
-                          updateMenuItemPrice(item.id, parseFloat(e.target.value));
-                          pushToast('Price updated', 'success');
-                          e.target.value = '';
-                        }
-                      }}
-                    />
-                    <button className="action-btn toggle" onClick={() => { toggleMenuItemAvailability(item.id); pushToast(item.availability ? 'Item disabled' : 'Item enabled', 'info') }}>
-                      {item.availability ? 'Disable' : 'Enable'}
-                    </button>
-                    <button className="action-btn delete" onClick={() => { setConfirmPayload({ type: 'delete', id: item.id }); setShowConfirm(true); }}>
-                      Delete
-                    </button>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="menu-card-header">
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
+                          <input type="checkbox" checked={selectedMenuIds.has(item.id)} onChange={()=>toggleSelect(item.id)} />
+                          <h4>{item.name}</h4>
+                        </div>
+                        <span className={`availability-badge ${item.availability ? 'available' : 'unavailable'}`}>
+                          {item.availability ? '✓ Available' : '✕ Unavailable'}
+                        </span>
+                      </div>
+                      <p className="menu-description">{item.description}</p>
+                      <div className="menu-details">
+                        <span><strong>Category:</strong> {item.category}</span>
+                        <span><strong>Prep Time:</strong> {item.preparationTime} min</span>
+                      </div>
+                      <div className="menu-price">
+                        <strong>KES {item.price.toLocaleString()}</strong>
+                      </div>
+                      <div className="menu-actions">
+                        <input
+                          type="number"
+                          className="price-input"
+                          placeholder="New price"
+                          onBlur={(e) => {
+                            if (e.target.value) {
+                              updateMenuItemPrice(item.id, parseFloat(e.target.value));
+                              pushToast('Price updated', 'success');
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                        <button className="action-btn" onClick={() => { setEditingMenuItem(item.id); setEditingValues(item); }} title="Edit"><Edit size={14}/> Edit</button>
+                        <button className="action-btn toggle" onClick={() => { toggleMenuItemAvailability(item.id); pushToast(item.availability ? 'Item disabled' : 'Item enabled', 'info') }}>
+                          {item.availability ? 'Disable' : 'Enable'}
+                        </button>
+                        <button className="action-btn delete" onClick={() => { setConfirmPayload({ type: 'delete', id: item.id }); setShowConfirm(true); }}>
+                          <Trash2 size={14}/> Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -470,6 +570,9 @@ const AdminDashboard = () => {
             <h2>Food Orders Management</h2>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:12}}>
               <input className="search-input" placeholder="Search orders by name or ID..." value={orderSearch} onChange={(e)=>setOrderSearch(e.target.value)} />
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn-export" onClick={() => exportOrdersCSV()} title="Export orders"><DownloadCloud size={16}/> Export</button>
+              </div>
             </div>
             <div className="orders-summary">
               <div className="order-stat">
