@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import PaymentGateway from './PaymentGateway';
+import ImageGallery from './ImageGallery';
+import ReviewSection from './ReviewSection';
+import AvailabilityCalendar from './AvailabilityCalendar';
 import '../styles/roombooking.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
 const RoomBooking = () => {
-  const { addToCart, addBooking } = useCart();
+  const { addToCart, cart } = useCart();
+  const navigate = useNavigate();
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [guests, setGuests] = useState(1);
@@ -22,6 +26,7 @@ const RoomBooking = () => {
       capacity: 2,
       amenities: ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Flat-screen TV', 'Work Desk'],
       image: getImagePath('home1.jfif'),
+      images: [getImagePath('home1.jfif'), getImagePath('home 2.jfif'), getImagePath('mega-park4.jfif')],
       description: 'Comfortable and affordable accommodation perfect for single travelers or couples.'
     },
     {
@@ -31,6 +36,7 @@ const RoomBooking = () => {
       capacity: 3,
       amenities: ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Flat-screen TV', 'Mini Bar', 'Safe', 'Bathrobe & Slippers'],
       image: getImagePath('home 2.jfif'),
+      images: [getImagePath('home 2.jfif'), getImagePath('megapark5.jfif'), getImagePath('megapark6.jfif')],
       description: 'Spacious room with premium amenities and stunning views of the resort grounds.'
     },
     {
@@ -40,6 +46,7 @@ const RoomBooking = () => {
       capacity: 4,
       amenities: ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Smart TV', 'Mini Bar', 'Safe', 'Bathrobe & Slippers', 'Jacuzzi Tub', 'Living Area', 'Premium Toiletries'],
       image: getImagePath('megapark5.jfif'),
+      images: [getImagePath('megapark5.jfif'), getImagePath('megapark6.jfif'), getImagePath('home1.jfif')],
       description: 'Luxurious suite with separate living area, premium amenities, and personalized services.'
     }
   ];
@@ -53,9 +60,6 @@ const RoomBooking = () => {
   };
 
   const nights = calculateNights();
-
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [pendingBooking, setPendingBooking] = useState(null);
 
   const handleAddToCart = (room) => {
     if (!checkInDate || !checkOutDate) {
@@ -86,19 +90,18 @@ const RoomBooking = () => {
       image: room.image
     };
 
-    // require payment before booking: open payment modal
-    setPendingBooking(bookingItem);
-    setIsPaymentOpen(true);
+    // add to cart and redirect to checkout for payment
+    addToCart(bookingItem);
+    const updatedCart = [...cart, bookingItem];
+    const cartTotal = updatedCart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+    setAddedMessage(`✓ ${room.name} added! Cart total: KES ${cartTotal.toLocaleString()}`);
+    setTimeout(() => {
+      setAddedMessage('');
+      navigate('/checkout');
+    }, 2000);
   };
 
-  const handlePaymentSuccess = (paymentData) => {
-    if (!pendingBooking) return;
-    const bookingOrder = addBooking(pendingBooking, paymentData);
-    setIsPaymentOpen(false);
-    setAddedMessage(`${pendingBooking.name} booked successfully!`);
-    setPendingBooking(null);
-    setTimeout(() => setAddedMessage(''), 3000);
-  };
+
 
   const getMinCheckOut = () => {
     if (!checkInDate) return '';
@@ -165,7 +168,7 @@ const RoomBooking = () => {
           {rooms.map(room => (
             <div key={room.id} className="room-card">
               <div className="room-image">
-                <img src={room.image} alt={room.name} />
+                <ImageGallery images={room.images} roomName={room.name} />
                 <div className="room-capacity">
                   👥 Up to {room.capacity} guests
                 </div>
@@ -198,25 +201,21 @@ const RoomBooking = () => {
                   onClick={() => handleAddToCart(room)}
                   disabled={!checkInDate || !checkOutDate || guests > room.capacity}
                 >
-                  {guests > room.capacity ? `Max ${room.capacity} guests` : 'Add to Cart'}
+                  {guests > room.capacity ? `Max ${room.capacity} guests` : '→ Book Now'}
                 </button>
 
-                {addedMessage === `${room.name} added to cart!` && (
+                {addedMessage === `✓ ${room.name} added! Cart total: KES ${[...cart, { price: room.price * nights }].reduce((total, item) => total + (item.price * (item.quantity || 1)), 0).toLocaleString()}` && (
                   <div className="success-message">{addedMessage}</div>
                 )}
               </div>
+
+              <ReviewSection roomId={room.id} roomName={room.name} />
+              <AvailabilityCalendar roomId={room.id} roomName={room.name} />
             </div>
           ))}
         </div>
       </div>
-      {isPaymentOpen && (
-        <PaymentGateway
-          isOpen={isPaymentOpen}
-          total={pendingBooking ? pendingBooking.price : 0}
-          onClose={() => setIsPaymentOpen(false)}
-          onPaymentSuccess={handlePaymentSuccess}
-        />
-      )}
+
     </section>
   );
 };

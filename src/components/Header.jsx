@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import AuthModal from './AuthModal';
 import '../styles/header.css';
 
@@ -13,6 +15,8 @@ const Header = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { getCartCount } = useCart();
   const { user, logout } = useUser();
+  const { isDark, toggleTheme } = useTheme();
+  const { language, changeLanguage, availableLanguages } = useLanguage();
   const cartCount = getCartCount();
 
   useEffect(() => {
@@ -73,6 +77,7 @@ const Header = () => {
               <li><a href="#halls" onClick={(e) => { e.preventDefault(); handleSectionClick('halls'); }}>Halls</a></li>
               <li><a href="#rooms" onClick={(e) => { e.preventDefault(); handleSectionClick('rooms'); }}>Accommodation</a></li>
               <li><a href="#contact" onClick={(e) => { e.preventDefault(); handleSectionClick('contact'); }}>Contact</a></li>
+              <li><Link to="/admin/login" className="admin-link" onClick={handleNavLinkClick}>🔐 Admin</Link></li>
               {user ? (
                 <>
                   <li><Link to="/profile" className="nav-link" onClick={handleNavLinkClick}>👤 {user.firstName}</Link></li>
@@ -83,6 +88,29 @@ const Header = () => {
           </nav>
 
           <div className="header-actions">
+            <button 
+              className="theme-toggle" 
+              onClick={toggleTheme}
+              title={isDark ? 'Light Mode' : 'Dark Mode'}
+              aria-label="Toggle theme"
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+
+            <div className="language-selector">
+              <select 
+                value={language} 
+                onChange={(e) => changeLanguage(e.target.value)}
+                title="Select Language"
+              >
+                {availableLanguages.map(lang => (
+                  <option key={lang} value={lang}>
+                    {lang.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {user ? (
               <div className="user-info">
                 <span className="user-name">👤 {user.firstName}</span>

@@ -1,13 +1,14 @@
 /* Header */
 .site-header {
-  background: #ffffff; 
-  border-bottom: 1px solid #e6eef6; 
+  background: var(--bg-primary); 
+  border-bottom: 1px solid var(--border-color); 
   position: fixed; 
   top: 0;
   right: 0;
   left: 0;
   height: 90px;
   z-index: 1000;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .header-inner { 

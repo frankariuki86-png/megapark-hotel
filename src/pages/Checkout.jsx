@@ -7,7 +7,7 @@ import '../styles/checkout.css';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart, updateCartItem, removeFromCart, getCartTotalForType, getCartCountForType, placeMenuOrder } = useCart();
+  const { cart, updateCartItem, removeFromCart, getCartTotalForType, getCartCountForType, placeMenuOrder, addBooking } = useCart();
   const { user, setIsAuthModalOpen } = useUser();
   const [selectedDelivery, setSelectedDelivery] = useState({});
   const [quantities, setQuantities] = useState({});
@@ -40,13 +40,15 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = React.useState('after');
 
   const getCartTotal = () => {
-    return getCartTotalForType('food');
+    return cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
   };
 
   const handlePlaceOrder = () => {
     const foodCount = getCartCountForType('food');
-    if (foodCount === 0) {
-      alert('Your cart has no food items to order!');
+    const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
+
+    if (foodCount === 0 && bookingItems.length === 0) {
+      alert('Your cart is empty!');
       return;
     }
 
@@ -61,7 +63,13 @@ const Checkout = () => {
       return;
     }
 
-    // pay after delivery (place order directly)
+    // For bookings, payment after is not allowed here
+    if (bookingItems.length > 0) {
+      alert('Bookings require payment before confirmation. Please choose "Pay before delivery".');
+      return;
+    }
+
+    // pay after delivery (place order directly) for food only
     const order = placeMenuOrder({ paymentMethod: 'after' });
     if (order) {
       alert(`Order placed successfully! Order ID: ${order.id}`);
@@ -70,12 +78,19 @@ const Checkout = () => {
   };
 
   const handlePaymentSuccess = (paymentData) => {
+    // place menu order with payment
     const order = placeMenuOrder({ paymentMethod: 'before', paymentData });
-    if (order) {
-      alert(`Order placed successfully! Order ID: ${order.id}\nPayment Method: ${paymentData.method}`);
-      setIsPaymentOpen(false);
-      navigate('/orders');
-    }
+
+    // process bookings (rooms/halls)
+    const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
+    bookingItems.forEach(item => {
+      addBooking(item, paymentData);
+      removeFromCart(item.id);
+    });
+
+    setIsPaymentOpen(false);
+    alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}`);
+    navigate('/orders');
   };
 
   const today = new Date();
@@ -93,9 +108,10 @@ const Checkout = () => {
     return deliveryOptions[0];
   };
 
+  const cartItems = cart;
   const foodItems = cart.filter(i => i.type === 'food');
 
-  if (foodItems.length === 0) {
+  if (cartItems.length === 0) {
     return (
       <div className="checkout-page">
         <div className="page-title">Your Cart</div>
@@ -113,7 +129,7 @@ const Checkout = () => {
 
       <div className="checkout-grid">
         <div className="order-summary">
-          {foodItems.map((item) => (
+          {cartItems.map((item) => (
             <div key={item.id} className="cart-item-container">
               <div className="delivery-date">
                 {item.type === 'food' && `Delivery date: ${getDeliveryDate(item.id, selectedDelivery[item.id]).date}`}
@@ -191,7 +207,7 @@ const Checkout = () => {
 
           <div className="payment-summary-row">
             <div>Subtotal:</div>
-            <div className="payment-summary-money">KES {getCartTotalForType('food').toLocaleString()}.00</div>
+            <div className="payment-summary-money">KES {getCartTotal().toLocaleString()}.00</div>
           </div>
 
           <div className="payment-summary-row subtotal-row">
@@ -218,7 +234,7 @@ const Checkout = () => {
             Place your order
           </button>
           {isPaymentOpen && (
-            <PaymentGateway isOpen={isPaymentOpen} total={getCartTotalForType('food')} onClose={() => setIsPaymentOpen(false)} onPaymentSuccess={handlePaymentSuccess} />
+            <PaymentGateway isOpen={isPaymentOpen} total={getCartTotal()} onClose={() => setIsPaymentOpen(false)} onPaymentSuccess={handlePaymentSuccess} />
           )}
         </div>
       </div>
