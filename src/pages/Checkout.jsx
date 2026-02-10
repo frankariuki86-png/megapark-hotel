@@ -12,6 +12,16 @@ const Checkout = () => {
   const [selectedDelivery, setSelectedDelivery] = useState({});
   const [quantities, setQuantities] = useState({});
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('after');
+  
+  // Customer details form
+  const [customerInfo, setCustomerInfo] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
+    specialRequests: ''
+  });
 
   // Initialize quantities on component mount or when cart changes
   React.useEffect(() => {
@@ -37,13 +47,24 @@ const Checkout = () => {
     removeFromCart(itemId);
   };
 
-  const [paymentMethod, setPaymentMethod] = React.useState('after');
+  const handleCustomerInfoChange = (field, value) => {
+    setCustomerInfo(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const getCartTotal = () => {
     return cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
   };
 
   const handlePlaceOrder = () => {
+    // Validate customer info
+    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone) {
+      alert('Please fill in all required customer details (Name, Email, Phone)');
+      return;
+    }
+
     const foodCount = getCartCountForType('food');
     const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
 
@@ -70,16 +91,35 @@ const Checkout = () => {
     }
 
     // pay after delivery (place order directly) for food only
-    const order = placeMenuOrder({ paymentMethod: 'after' });
+    const orderData = {
+      customerName: customerInfo.name,
+      customerEmail: customerInfo.email,
+      customerPhone: customerInfo.phone,
+      deliveryAddress: customerInfo.address,
+      specialRequests: customerInfo.specialRequests,
+      paymentMethod: 'after'
+    };
+    
+    const order = placeMenuOrder(orderData);
     if (order) {
-      alert(`Order placed successfully! Order ID: ${order.id}`);
+      alert(`Order placed successfully! Order ID: ${order.id}. We'll contact you soon.`);
       navigate('/orders');
     }
   };
 
   const handlePaymentSuccess = (paymentData) => {
     // place menu order with payment
-    const order = placeMenuOrder({ paymentMethod: 'before', paymentData });
+    const orderData = {
+      customerName: customerInfo.name,
+      customerEmail: customerInfo.email,
+      customerPhone: customerInfo.phone,
+      deliveryAddress: customerInfo.address,
+      specialRequests: customerInfo.specialRequests,
+      paymentMethod: 'before',
+      paymentData
+    };
+    
+    const order = placeMenuOrder(orderData);
 
     // process bookings (rooms/halls)
     const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
@@ -89,7 +129,7 @@ const Checkout = () => {
     });
 
     setIsPaymentOpen(false);
-    alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}`);
+    alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}\nWe've sent a confirmation email to ${customerInfo.email}`);
     navigate('/orders');
   };
 
@@ -129,6 +169,67 @@ const Checkout = () => {
 
       <div className="checkout-grid">
         <div className="order-summary">
+          {/* Customer Information Section */}
+          <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Delivery Information</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Full Name *</label>
+                <input
+                  type="text"
+                  placeholder="Your full name"
+                  value={customerInfo.name}
+                  onChange={(e) => handleCustomerInfoChange('name', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Email *</label>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={customerInfo.email}
+                  onChange={(e) => handleCustomerInfoChange('email', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Phone *</label>
+                <input
+                  type="tel"
+                  placeholder="+254 7xx xxx xxx"
+                  value={customerInfo.phone}
+                  onChange={(e) => handleCustomerInfoChange('phone', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Address</label>
+                <input
+                  type="text"
+                  placeholder="Delivery address"
+                  value={customerInfo.address}
+                  onChange={(e) => handleCustomerInfoChange('address', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: '12px' }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Special Requests</label>
+              <textarea
+                placeholder="Any dietary restrictions, allergies, or special instructions?"
+                value={customerInfo.specialRequests}
+                onChange={(e) => handleCustomerInfoChange('specialRequests', e.target.value)}
+                rows="3"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'inherit' }}
+              />
+            </div>
+          </div>
+
+          {/* Order Items */}
           {cartItems.map((item) => (
             <div key={item.id} className="cart-item-container">
               <div className="delivery-date">
