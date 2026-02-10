@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Phone, Mail, MessageCircle, ArrowUp, Facebook, Instagram, TrendingUp } from 'lucide-react';
 import '../styles/footer.css';
 
 const Footer = () => {
@@ -16,8 +17,8 @@ const Footer = () => {
         <div className="footer-info">
           <div className="contact-details">
             <h3>Talk to us</h3>
-            <p><strong>WhatsApp:</strong> <a href="https://wa.me/254711768878" target="_blank" rel="noopener">+254 711 768 878</a></p>
-            <p><strong>Email:</strong> <a href="mailto:megapark@gmail.com">megapark@gmail.com</a></p>
+            <p><strong><Phone size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />WhatsApp:</strong> <a href="https://wa.me/254711768878" target="_blank" rel="noopener" aria-label="WhatsApp: +254 711 768 878">+254 711 768 878</a></p>
+            <p><strong><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />Email:</strong> <a href="mailto:megapark@gmail.com" aria-label="Email: megapark@gmail.com">megapark@gmail.com</a></p>
             <p><strong>Working Hours:</strong> Mon — Sun, 24 Hours</p>
           </div>
 
@@ -35,17 +36,17 @@ const Footer = () => {
           <div className="social-media">
             <strong>Connect</strong>
             <ul>
-              <li><a href="https://www.facebook.com/share/1DD9trYBXc/" target="_blank" rel="noopener">Facebook</a></li>
-              <li><a href="https://www.instagram.com/bluepeaktechsolution?utm_source=qr&igsh=YnJrMTNsNHV3aGo0" target="_blank" rel="noopener">Instagram</a></li>
-              <li><a href="https://wa.me/254711768878" target="_blank" rel="noopener">WhatsApp</a></li>
-              <li><a href="https://www.tiktok.com/@bluepeaktechsolution?_r=1&_t=ZM-91mFuZxYDnw" target="_blank" rel="noopener">Tiktok</a></li>
+              <li><a href="https://www.facebook.com/share/1DD9trYBXc/" target="_blank" rel="noopener" aria-label="Visit us on Facebook"><Facebook size={20} style={{ display: 'inline', marginRight: '8px' }} />Facebook</a></li>
+              <li><a href="https://www.instagram.com/bluepeaktechsolution?utm_source=qr&igsh=YnJrMTNsNHV3aGo0" target="_blank" rel="noopener" aria-label="Visit us on Instagram"><Instagram size={20} style={{ display: 'inline', marginRight: '8px' }} />Instagram</a></li>
+              <li><a href="https://wa.me/254711768878" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp"><MessageCircle size={20} style={{ display: 'inline', marginRight: '8px' }} />WhatsApp</a></li>
+              <li><a href="https://www.tiktok.com/@bluepeaktechsolution?_r=1&_t=ZM-91mFuZxYDnw" target="_blank" rel="noopener" aria-label="Follow us on TikTok"><TrendingUp size={20} style={{ display: 'inline', marginRight: '8px' }} />Tiktok</a></li>
             </ul>
           </div>
         </div>
 
         <div className="copy">
           <span>© <span id="year"></span> Megapark Resort— All rights reserved.</span>
-          <Link to="/">Back to top ↑</Link>
+          <Link to="/" aria-label="Back to top"><ArrowUp size={18} style={{ display: 'inline', marginLeft: '8px', verticalAlign: 'middle' }} /></Link>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -53,12 +54,8 @@ const Footer = () => {
         </div>
       </footer>
 
-      <a className="whatsapp-float" href="https://wa.me/254711768878" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
-        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false">
-          <path fill="#fff" d="M20.5 3.5A11 11 0 1 0 6.4 20.6L3 21.9l1.3-3.5A11 11 0 0 0 20.5 3.5z" />
-          <path fill="#06D755" d="M12 2a10 10 0 1 0 7.07 17.07L21 22l-2.93-.93A10 10 0 0 0 12 2z" opacity="0.0"/>
-          <path fill="#fff" d="M17.3 14.2c-.3-.15-1.9-.95-2.2-1.05-.3-.1-.5-.15-.7.15-.2.3-.8 1.05-.95 1.25-.15.2-.3.25-.55.08-.25-.15-1.05-.39-2-1.22-.74-.66-1.24-1.45-1.38-1.75-.14-.3 0-.46.12-.61.12-.12.25-.3.37-.45.12-.15.16-.25.25-.42.08-.15.04-.3-.02-.45-.06-.15-.7-1.7-.96-2.33-.25-.6-.5-.52-.7-.53-.18-.01-.4-.01-.6-.01l-.5.01c-.25 0-.65.08-.99.38-.34.29-1.3 1.27-1.3 3.1 0 1.82 1.33 3.57 1.52 3.82.2.25 2.62 4 6.35 5.6 3.73 1.6 3.73 1.07 4.4 1.01.6-.06 1.9-.77 2.17-1.52.28-.75.28-1.4.2-1.52-.08-.12-.28-.2-.59-.34z"/>
-        </svg>
+      <a className="whatsapp-float" href="https://wa.me/254711768878" target="_blank" rel="noopener" aria-label="Chat on WhatsApp" title="Chat on WhatsApp">
+        <MessageCircle size={32} color="#fff" fill="#25D366" />
       </a>
     </>
   );

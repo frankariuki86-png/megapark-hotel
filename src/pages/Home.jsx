@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import RoomBooking from '../components/RoomBooking';
 import HallBooking from '../components/HallBooking';
@@ -142,6 +143,22 @@ const Home = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Keyboard navigation for carousel
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextSlide();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const goToSlide = (index) => {
     setCurrentSlide(index);
   };
@@ -184,50 +201,84 @@ const Home = () => {
   };
 
   return (
-    <main>
+    <main id="main-content">
       {/* Hero Carousel */}
       <section id="home" className="hero">
-        <div className="hero-carousel" aria-live="polite">
+        <div className="hero-carousel" aria-label="Hero carousel" role="region" aria-live="polite" aria-atomic="true">
           {slides.map((slide, index) => (
             <div
               key={index}
               className={`slide ${index === currentSlide ? 'active' : ''}`}
               style={{ backgroundImage: `url('${slide.image}')`, minHeight: '450px' }}
+              aria-hidden={index !== currentSlide}
+              role="tabpanel"
+              aria-label={`Slide ${index + 1}: ${slide.title}`}
             >
               <div className="slide-content">
                 <h1>{slide.title}</h1>
                 <p>{slide.description}</p>
-                <a href={slide.ctaLink} className="btn">{slide.ctaText}</a>
+                <a href={slide.ctaLink} className="btn" title={slide.ctaText}>{slide.ctaText}</a>
               </div>
             </div>
           ))}
 
-          <div className="carousel-controls">
-            <button id="prevSlide" aria-label="Previous slide" onClick={prevSlide}>&lt;</button>
-            <button id="nextSlide" aria-label="Next slide" onClick={nextSlide}>&gt;</button>
+          <div className="carousel-controls" role="group" aria-label="Carousel controls">
+            <button 
+              id="prevSlide" 
+              className="carousel-btn prev-btn"
+              aria-label={`Previous slide (Currently on slide ${currentSlide + 1} of ${slides.length})`}
+              title="Previous slide (Press left arrow)"
+              onClick={prevSlide}
+            >
+              <ChevronLeft size={24} />
+            </button>
+            
+            <div className="slide-indicators" role="tablist" aria-label="Slide indicators">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  className={`indicator ${index === currentSlide ? 'active' : ''}`}
+                  onClick={() => goToSlide(index)}
+                  aria-label={`Slide ${index + 1}`}
+                  role="tab"
+                  aria-selected={index === currentSlide}
+                  title={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
+
+            <button 
+              id="nextSlide" 
+              className="carousel-btn next-btn"
+              aria-label={`Next slide (Currently on slide ${currentSlide + 1} of ${slides.length})`}
+              title="Next slide (Press right arrow)"
+              onClick={nextSlide}
+            >
+              <ChevronRight size={24} />
+            </button>
           </div>
         </div>
       </section>
 
       {/* About Section */}
-      <section id="about" className="section about container">
-        <h2>About Megapark Resort</h2>
+      <section id="about" className="section about container" aria-labelledby="about-heading">
+        <h2 id="about-heading">About Megapark Resort</h2>
         <div className="about-grid">
           <div>
             <p><strong>Megapark Resort</strong> is a serene getaway designed to offer comfort, relaxation, and memorable experiences. Nestled in a peaceful environment, we combine warm Kenyan hospitality with modern amenities to create a perfect destination for leisure and events. Our resort features comfortable accommodation, delicious authentic and continental cuisine, and well-designed spaces for weddings, conferences, and celebrations. Whether you are visiting to unwind, dine, or host a special occasion, Megapark Resort is committed to providing exceptional service and an unforgettable experience for every guest.</p>
           </div>
           <div className="about-photo">
-            <img src={getImagePath('about.webp')} alt="about-photo" />
+            <img src={getImagePath('about.webp')} alt="Megapark Resort exterior and landscape" />
           </div>
         </div>
       </section>
 
       {/* Menu Section */}
-      <section id="menu" className="section menu container">
-        <h2>Our Menu</h2>
-        <div className="menu-grid">
+      <section id="menu" className="section menu container" aria-labelledby="menu-heading">
+        <h2 id="menu-heading">Our Menu</h2>
+        <div className="menu-grid" role="list">
           {menuItems.map((item) => (
-            <article key={item.id} className="menu-card">
+            <article key={item.id} className="menu-card" role="listitem" aria-label={item.name}>
               <div className="food-menu-card">
                 <img src={item.image} alt={item.name} />
                 <div className="food-menu-body">
@@ -239,7 +290,7 @@ const Home = () => {
                       <strong>KES {item.price.toLocaleString()}</strong>
                       <br /><br />
                       <label htmlFor={`quantity-${item.id}`}>Quantity:</label>
-                      <select id={`quantity-${item.id}`} name="quantity" defaultValue="1">
+                      <select id={`quantity-${item.id}`} name="quantity" defaultValue="1" aria-label={`Quantity for ${item.name}`}>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(q => (
                           <option key={q} value={q}>{q}</option>
                         ))}
@@ -254,6 +305,8 @@ const Home = () => {
                           const quantity = document.getElementById(`quantity-${item.id}`).value;
                           handleAddToCart(item, quantity);
                         }}
+                        aria-label={`Add ${item.name} to cart`}
+                        title={`Add ${item.name} to cart`}
                       >
                         Make order
                       </button>
@@ -279,26 +332,26 @@ const Home = () => {
       <section id="contact" style={{ background: '#f5f5f5' }}>
         <div className="container">
           <div style={{ marginBottom: '30px' }}>
-            <h2 style={{ color: '#0b7546', marginBottom: '10px' }}>Get in Touch</h2>
+            <h2 id="contact-heading" style={{ color: '#0b7546', marginBottom: '10px' }}>Get in Touch</h2>
           </div>
           <div className="contact-grid">
             <div className="card" style={{ padding: '16px' }}>
-              <form id="contactForm" aria-label="Contact form" onSubmit={handleContactSubmit}>
+              <form id="contactForm" aria-labelledby="contact-heading" onSubmit={handleContactSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <label htmlFor="name"><strong>Name</strong></label>
-                    <input id="name" name="name" required placeholder="francis kariuki" />
+                    <input id="name" name="name" required placeholder="francis kariuki" aria-required="true" />
                   </div>
                   <div>
                     <label htmlFor="email"><strong>Email</strong></label>
-                    <input id="email" type="email" name="email" required placeholder="megapark@gmail.com" />
+                    <input id="email" type="email" name="email" required placeholder="megapark@gmail.com" aria-required="true" />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
                   <div>
                     <label htmlFor="program"><strong>type of inquiry</strong></label>
-                    <select id="program" name="program">
+                    <select id="program" name="program" aria-label="Type of inquiry">
                       <option>wedding Event</option>
                       <option>Graduation event</option>
                       <option>conference</option>
@@ -307,16 +360,16 @@ const Home = () => {
                   </div>
                   <div>
                     <label htmlFor="phone"><strong>Phone</strong> <small>(optional)</small></label>
-                    <input id="phone" name="phone" placeholder="+254 7xx xxx xxx" />
+                    <input id="phone" name="phone" placeholder="+254 7xx xxx xxx" aria-label="Phone number" />
                   </div>
                 </div>
 
                 <div style={{ marginTop: '12px' }}>
                   <label htmlFor="message"><strong>Message</strong></label>
-                  <textarea id="message" name="message" rows="5" placeholder="Tell us how we can help"></textarea>
+                  <textarea id="message" name="message" rows="5" placeholder="Tell us how we can help" aria-label="Message"></textarea>
                 </div>
 
-                <button className="btn" type="submit" style={{ marginTop: '16px' }}>Send Message</button>
+                <button className="btn" type="submit" style={{ marginTop: '16px' }} aria-label="Send contact message">Send Message</button>
               </form>
             </div>
             <div className="card map">
@@ -330,7 +383,8 @@ const Home = () => {
                 allowFullScreen=""
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Megapark Resort Location"
+                title="Megapark Resort Location on Google Maps"
+                aria-label="Google Maps showing Megapark Resort location"
               ></iframe>
             </div>
           </div>

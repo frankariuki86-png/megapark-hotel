@@ -55,7 +55,8 @@ const call = async (method, path, body = null, skipAuth = false) => {
   if (body) opts.body = JSON.stringify(body);
   
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Backend timeout')), TIMEOUT);
+    const timer = setTimeout(() => reject(new Error(`Failed to fetch ${path}: Request timeout after ${TIMEOUT}ms`)), TIMEOUT);
+    
     fetch(url, opts)
       .then(async res => {
         clearTimeout(timer);
@@ -63,7 +64,11 @@ const call = async (method, path, body = null, skipAuth = false) => {
         if (!res.ok) return reject(new Error(json.error || `HTTP ${res.status}`));
         resolve(json);
       })
-      .catch(err => { clearTimeout(timer); reject(err); });
+      .catch(err => { 
+        clearTimeout(timer);
+        console.error(`[API Error] ${method} ${path}:`, err.message);
+        reject(new Error(`Failed to fetch: ${err.message}`)); 
+      });
   });
 };
 
@@ -102,6 +107,13 @@ export const updateMenuItemPrice = (id, price) => call('PUT', `/api/menu/${id}`,
 export const fetchOrders = () => call('GET', '/api/orders');
 export const createOrder = (order) => call('POST', '/api/orders', order);
 export const updateOrderApi = (id, updates) => call('PUT', `/api/orders/${id}`, updates);
+// Admin User Management endpoints
+// Admin User Management endpoints
+export const fetchAdminUsers = () => call('GET', '/api/admin/users');
+export const createAdminUser = (user) => call('POST', '/api/admin/users', user);
+export const updateAdminUser = (id, updates) => call('PUT', `/api/admin/users/${id}`, updates);
+export const deleteAdminUser = (id) => call('DELETE', `/api/admin/users/${id}`);
+export const changeAdminPassword = (id, passwords) => call('POST', `/api/admin/users/${id}/password`, passwords);
 
 // Payment endpoints
 export const createPaymentIntent = (order) => call('POST', '/api/payments/create-intent', order);
@@ -116,6 +128,7 @@ export const saveOrders = (orders) => Promise.resolve(orders);
 export default {
   fetchMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, updateMenuItemPrice,
   fetchOrders, createOrder, updateOrderApi, loginAdmin, logoutAdmin, refreshAccessToken,
+  fetchAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, changeAdminPassword,
   createPaymentIntent, confirmPaymentIntent, getPaymentIntent,
   saveMenuItems, saveOrders, getToken, setToken, getRefreshToken, setTokens
 };

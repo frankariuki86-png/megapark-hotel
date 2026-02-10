@@ -1,0 +1,31 @@
+[
+  {
+    "id": "admin-001",
+    "email": "admin@megapark.com",
+    "name": "Admin User",
+    "role": "admin",
+    "isActive": true,
+    "createdAt": "2026-02-10T14:07:32.656Z",
+    "updatedAt": "2026-02-10T14:07:32.656Z"
+  },
+  {
+    "id": "user-1770733309910",
+    "email": "admin@megapark.com",
+    "name": "Francis",
+    "role": "admin",
+    "isActive": true,
+    "createdAt": "2026-02-10T14:21:49.911Z",
+    "updatedAt": "2026-02-10T14:21:49.911Z",
+    "passwordHash": "$2b$10$z8gc/KTMcJbBsgZzjP7fB.MkT8Wd16fu06msNjZZdprrL/ANlWzC2"
+  },
+  {
+    "id": "user-1770733467485",
+    "email": "frankariuki86@gmail.com",
+    "name": "Kariuki",
+    "role": "staff",
+    "isActive": true,
+    "createdAt": "2026-02-10T14:24:27.486Z",
+    "updatedAt": "2026-02-10T14:24:27.486Z",
+    "passwordHash": "$2b$10$WKX6RaSVW9p8PsnpGzPC/uy1OdkIjfpkaSrooXd6Xl432/H7QhPAm"
+  }
+]

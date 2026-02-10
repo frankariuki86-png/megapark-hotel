@@ -14,86 +14,63 @@ const authenticate = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded; // Attach user info to request
-    next();
+    return next();
   } catch (e) {
-        if (e.name === 'TokenExpiredError') {
-          return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
-        }
-    return res.status(401).json({ error: 'Unauthorized: invalid token' });
-  // Generate short-lived access token (15 min default)
-  const generateAccessToken = (user) => {
-    return jwt.sign(
-      { id: user.id, email: user.email, role: user.role, type: 'access' },
-      JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES || '15m' }
-    );
-  };
-
-  // Generate long-lived refresh token (7 days default)
-  const generateRefreshToken = (user) => {
-    return jwt.sign(
-      { id: user.id, email: user.email, role: user.role, type: 'refresh' },
-      JWT_REFRESH_SECRET,
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES || '7d' }
-    );
-  };
-
-  // Legacy: Generate both tokens (returns both access and refresh)
-  const generateToken = (user) => {
-    return generateAccessToken(user);
-  };
-
-  // Generate tokens pair
-  const generateTokenPair = (user) => {
-    return {
-      accessToken: generateAccessToken(user),
-      refreshToken: generateRefreshToken(user)
-    };
-  };
-
-  // Verify refresh token and generate new access token
-  const refreshAccessToken = (refreshToken) => {
-    try {
-      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-    
-      if (decoded.type !== 'refresh') {
-        throw new Error('Invalid token type');
-      }
-
-      // Generate new access token
-      const user = {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role
-      };
-    
-      return {
-        accessToken: generateAccessToken(user),
-        refreshToken: generateRefreshToken(user) // Optional: rotate refresh token
-      };
-    } catch (e) {
-      throw new Error(`Invalid refresh token: ${e.message}`);
+    if (e.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
     }
-  };
-
-  module.exports = {
-    authenticate,
-    generateToken,
-    generateAccessToken,
-    generateRefreshToken,
-    generateTokenPair,
-    refreshAccessToken
-  };
+    return res.status(401).json({ error: 'Unauthorized: invalid token' });
   }
 };
 
-// Generate JWT for user
-const generateToken = (user) => {
+// Generate short-lived access token (default 15m)
+const generateAccessToken = (user, expires = process.env.JWT_EXPIRES || '15m') => {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    { id: user.id, email: user.email, role: user.role, type: 'access' },
     JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES || '24h' }
+    { expiresIn: expires }
   );
 };
 
-module.exports = { authenticate, generateToken };
+// Generate long-lived refresh token (default 7d)
+const generateRefreshToken = (user, expires = process.env.JWT_REFRESH_EXPIRES || '7d') => {
+  return jwt.sign(
+    { id: user.id, email: user.email, role: user.role, type: 'refresh' },
+    JWT_REFRESH_SECRET,
+    { expiresIn: expires }
+  );
+};
+
+// Generate token pair
+const generateTokenPair = (user) => ({
+  accessToken: generateAccessToken(user),
+  refreshToken: generateRefreshToken(user)
+});
+
+// Refresh access token using refresh token
+const refreshAccessToken = (refreshToken) => {
+  try {
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+    if (decoded.type !== 'refresh') throw new Error('Invalid token type');
+    const user = { id: decoded.id, email: decoded.email, role: decoded.role };
+    return generateTokenPair(user);
+  } catch (e) {
+    throw new Error(`Invalid refresh token: ${e.message}`);
+  }
+};
+
+// Legacy single token generator (kept for backward compatibility)
+const generateToken = (user) => jwt.sign(
+  { id: user.id, email: user.email, role: user.role },
+  JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES || '24h' }
+);
+
+module.exports = {
+  authenticate,
+  generateToken,
+  generateAccessToken,
+  generateRefreshToken,
+  generateTokenPair,
+  refreshAccessToken
+};

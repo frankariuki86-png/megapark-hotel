@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Sun, Moon, User, LogOut, ShoppingCart, LogIn, Menu, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
@@ -77,11 +78,11 @@ const Header = () => {
               <li><a href="#halls" onClick={(e) => { e.preventDefault(); handleSectionClick('halls'); }}>Halls</a></li>
               <li><a href="#rooms" onClick={(e) => { e.preventDefault(); handleSectionClick('rooms'); }}>Accommodation</a></li>
               <li><a href="#contact" onClick={(e) => { e.preventDefault(); handleSectionClick('contact'); }}>Contact</a></li>
-              <li><Link to="/admin/login" className="admin-link" onClick={handleNavLinkClick}>🔐 Admin</Link></li>
+              <li><Link to="/admin/login" className="admin-link" onClick={handleNavLinkClick} title="Admin Login">🔐 Admin</Link></li>
               {user ? (
                 <>
-                  <li><Link to="/profile" className="nav-link" onClick={handleNavLinkClick}>👤 {user.firstName}</Link></li>
-                  <li><button className="nav-btn logout-btn" onClick={() => { logout(); handleNavLinkClick(); }}>Logout</button></li>
+                  <li><Link to="/profile" className="nav-link" onClick={handleNavLinkClick} title={`Profile - ${user.firstName}`}><User size={18} /> {user.firstName}</Link></li>
+                  <li><button className="nav-btn logout-btn" onClick={() => { logout(); handleNavLinkClick(); }} title="Logout"><LogOut size={18} /> Logout</button></li>
                 </>
               ) : null}
             </ul>
@@ -92,9 +93,9 @@ const Header = () => {
               className="theme-toggle" 
               onClick={toggleTheme}
               title={isDark ? 'Light Mode' : 'Dark Mode'}
-              aria-label="Toggle theme"
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              {isDark ? '☀️' : '🌙'}
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
             <div className="language-selector">
@@ -102,6 +103,7 @@ const Header = () => {
                 value={language} 
                 onChange={(e) => changeLanguage(e.target.value)}
                 title="Select Language"
+                aria-label="Select language"
               >
                 {availableLanguages.map(lang => (
                   <option key={lang} value={lang}>
@@ -113,24 +115,20 @@ const Header = () => {
 
             {user ? (
               <div className="user-info">
-                <span className="user-name">👤 {user.firstName}</span>
-                <button className="logout-btn-small" onClick={() => logout()} title="Logout">✕</button>
+                <span className="user-name"><User size={18} /> {user.firstName}</span>
+                <button className="logout-btn-small" onClick={() => logout()} title="Logout" aria-label="Logout"><X size={18} /></button>
               </div>
             ) : (
-              <button className="login-btn-header" onClick={() => setIsAuthModalOpen(true)}>Login</button>
+              <button className="login-btn-header" onClick={() => setIsAuthModalOpen(true)} aria-label="Login"><LogIn size={18} /> Login</button>
             )}
             
-            <Link to="/orders" className="action-icon orders-icon" title="View Orders" aria-label="Orders">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 6h16v2H4V6zm0 4h16v8H4v-8zm2-4h2V2h8v4h2v2H6V6z"/>
-              </svg>
+            <Link to="/orders" className="action-icon orders-icon" title="View Orders" aria-label="View orders">
+              <ShoppingCart size={20} />
               <span>Orders</span>
             </Link>
 
-            <Link to="/checkout" className="action-icon cart-icon" title="Shopping Cart" aria-label="Cart">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
-              </svg>
+            <Link to="/checkout" className="action-icon cart-icon" title="Shopping Cart" aria-label="Shopping cart">
+              <ShoppingCart size={20} />
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </Link>
           </div>

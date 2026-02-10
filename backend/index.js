@@ -63,10 +63,12 @@ const readJSON = (p, fallback) => {
 const writeJSON = (p, data) => { fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
 
 // Routes
-const authRouter = require('./routes/auth')({ logger });
+const authRouter = require('./routes/auth')({ logger, pgClient });
 const menuRouter = require('./routes/menu')({ pgClient, readJSON, writeJSON, menuPath, logger });
 const ordersRouter = require('./routes/orders')({ pgClient, readJSON, writeJSON, ordersPath, logger });
 const paymentsRouter = require('./routes/payments')({ logger });
+const adminUsersPath = path.join(dataDir, 'admin-users.json');
+const adminUsersRouter = require('./routes/admin-users')({ pgClient, readJSON, writeJSON, adminUsersPath, logger });
 
 // Apply rate limiting to auth endpoints
 app.use('/api/auth/login', authRateLimit);
@@ -82,6 +84,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/admin/users', adminUsersRouter);
 
 /**
  * @swagger

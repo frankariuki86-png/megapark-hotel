@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/authenticate');
 const { PaymentIntentSchema } = require('../validators/schemas');
 const paymentService = require('../services/paymentService');
 const { sendEmail } = require('../services/emailService');
+const mpesaService = require('../services/mpesaService');
 
 module.exports = ({ logger }) => {
   // Create payment intent for order
@@ -104,6 +105,20 @@ module.exports = ({ logger }) => {
     } catch (e) {
       logger.error('Webhook error', e.message);
       res.status(400).json({ error: 'Webhook error' });
+    }
+  });
+
+  // Initiate M-Pesa STK Push (simulated if Daraja not configured)
+  router.post('/mpesa/initiate', async (req, res) => {
+    try {
+      const { phoneNumber, amount, accountName, orderId } = req.body;
+      if (!phoneNumber || !amount) return res.status(400).json({ error: 'phoneNumber and amount required' });
+
+      const result = await mpesaService.initiateStkPush({ phoneNumber, amount, accountName, orderId }, logger);
+      return res.json(result);
+    } catch (e) {
+      logger.error('M-Pesa initiation failed', e.message || e.toString());
+      return res.status(500).json({ error: 'Failed to initiate M-Pesa payment' });
     }
   });
 

@@ -6,6 +6,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AdminProvider } from './context/AdminContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import SEO from './components/SEO';
 import Home from './pages/Home';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
@@ -24,16 +25,70 @@ function App() {
             <AdminProvider>
               <Router basename="/megapark-hotel">
                 <Routes>
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin/login" element={
+                    <>
+                      <SEO 
+                        title="Admin Login - Megapark Resort"
+                        description="Admin login page for Megapark Resort management system"
+                      />
+                      <AdminLogin />
+                    </>
+                  } />
+                  <Route path="/admin/dashboard" element={
+                    <>
+                      <SEO 
+                        title="Admin Dashboard - Megapark Resort"
+                        description="Admin dashboard for managing rooms, bookings, and orders at Megapark Resort"
+                      />
+                      <AdminDashboard />
+                    </>
+                  } />
                   <Route path="*" element={
                     <>
                       <Header />
                       <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/checkout" element={<Checkout />} />
-                        <Route path="/orders" element={<Orders />} />
-                        <Route path="/profile" element={<UserProfile />} />
+                        <Route path="/" element={
+                          <>
+                            <SEO 
+                              title="Megapark Resort - Book Rooms, Events & Authentic Kenyan Cuisine"
+                              description="Megapark Resort offers comfortable accommodation, event venues, and authentic Kenyan cuisine. Book your stay, event, or meal today!"
+                              url="https://megapark-hotel.com/"
+                              keywords="hotel Kenya, accommodation Nairobi, event venue, restaurant, rooms booking"
+                            />
+                            <Home />
+                          </>
+                        } />
+                        <Route path="/checkout" element={
+                          <>
+                            <SEO 
+                              title="Checkout - Megapark Resort"
+                              description="Complete your booking at Megapark Resort. Secure checkout for rooms, events, and food orders."
+                              url="https://megapark-hotel.com/checkout"
+                            />
+                            <Checkout />
+                          </>
+                        } />
+                        
+                        <Route path="/orders" element={
+                          <>
+                            <SEO 
+                              title="My Orders - Megapark Resort"
+                              description="View and manage your orders at Megapark Resort. Track your bookings and payments."
+                              url="https://megapark-hotel.com/orders"
+                            />
+                            <Orders />
+                          </>
+                        } />
+                        <Route path="/profile" element={
+                          <>
+                            <SEO 
+                              title="My Profile - Megapark Resort"
+                              description="Manage your profile and preferences at Megapark Resort."
+                              url="https://megapark-hotel.com/profile"
+                            />
+                            <UserProfile />
+                          </>
+                        } />
                       </Routes>
                       <Footer />
                     </>

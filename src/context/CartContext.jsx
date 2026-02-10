@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createOrder } from '../api/mockApi';
 
 const CartContext = createContext();
 
@@ -73,48 +74,93 @@ export const CartProvider = ({ children }) => {
       .reduce((count, item) => count + item.quantity, 0);
   }, [cart]);
 
-  // Place an order for menu (food) items only. If paymentMethod is 'before',
-  // paymentData should be provided and paymentStatus will be 'paid'. For
-  // 'after', paymentStatus will be 'pending'. Delivery is free; deliveryDate
-  // defaults to today.
-  const placeMenuOrder = useCallback(({ paymentMethod = 'after', paymentData = null, deliveryDate = null } = {}) => {
+  // Place an order for menu (food) items. Sends to backend and waits for admin approval.
+  // Status defaults to 'pending' until admin confirms.
+  const placeMenuOrder = useCallback(async ({ customerName = '', customerEmail = '', customerPhone = '', orderType = 'dine-in', deliveryAddress = '', paymentMethod = 'after', paymentData = null, deliveryDate = null } = {}) => {
     const menuItems = cart.filter(item => item.type === 'food');
     if (menuItems.length === 0) return null;
 
-    const orderId = `ORD-${Date.now()}`;
     const orderDate = new Date();
-    const orderDateFormatted = orderDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
+    const subtotal = menuItems.reduce((t, it) => t + (it.price * it.quantity), 0);
+    const deliveryFee = orderType === 'delivery' ? 200 : 0; // Fixed delivery fee for demo
+    const tax = Math.round((subtotal + deliveryFee) * 0.12); // 12% tax
+    const totalAmount = subtotal + deliveryFee + tax;
     const delivery = deliveryDate ? new Date(deliveryDate) : orderDate;
 
-    const newOrder = {
-      id: orderId,
-      type: 'menu',
-      date: orderDateFormatted,
-      dateTime: orderDate.toISOString(),
-      items: menuItems,
-      total: menuItems.reduce((t, it) => t + (it.price * it.quantity), 0),
-      status: paymentMethod === 'before' ? 'confirmed' : 'processing',
-      paymentMethod,
+    const orderPayload = {
+      customerName,
+      customerEmail,
+      customerPhone,
+      orderType,
+      orderDate: orderDate.toISOString(),
+      deliveryDate: delivery.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+      deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
+      items: menuItems.map(it => ({
+        itemName: it.name,
+        quantity: it.quantity,
+        unitPrice: it.price,
+        totalPrice: it.price * it.quantity
+      })),
+      subtotal,
+      deliveryFee,
+      tax,
+      totalAmount,
+      status: 'pending', // Admin must approve
       paymentStatus: paymentMethod === 'before' ? 'paid' : 'pending',
-      paymentData: paymentData || null,
-      deliveryDate: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      estimatedDelivery: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      tracking: {
-        stage: paymentMethod === 'before' ? 1 : 1,
-        lastUpdate: orderDate.toISOString(),
-        location: 'Order processing facility'
-      }
+      paymentMethod: paymentMethod || 'cash'
     };
 
-    // remove only the menu items from the cart
-    setCart(prev => prev.filter(item => item.type !== 'food'));
-    setOrders(prevOrders => [newOrder, ...prevOrders]);
-    return newOrder;
+    try {
+      // Send to backend
+      const created = await createOrder(orderPayload);
+      
+      // Also store locally for tracking
+      const newOrder = {
+        id: created.id || `ORD-${Date.now()}`,
+        type: 'menu',
+        date: orderDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        dateTime: created.created_at || orderDate.toISOString(),
+        items: menuItems,
+        total: totalAmount,
+        status: created.status || 'pending',
+        paymentStatus: created.payment_status || 'pending',
+        paymentMethod,
+        paymentData: paymentData || null,
+        deliveryDate: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        estimatedDelivery: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        tracking: {
+          stage: 1,
+          lastUpdate: created.created_at || orderDate.toISOString(),
+          location: 'Awaiting admin approval'
+        }
+      };
+
+      // Remove only the menu items from cart
+      setCart(prev => prev.filter(item => item.type !== 'food'));
+      setOrders(prevOrders => [newOrder, ...prevOrders]);
+      return newOrder;
+    } catch (err) {
+      console.error('Failed to place order:', err);
+      // Fallback to local-only order if backend fails
+      const fallbackOrder = {
+        id: `ORD-${Date.now()}`,
+        type: 'menu',
+        date: orderDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        dateTime: orderDate.toISOString(),
+        items: menuItems,
+        total: totalAmount,
+        status: 'pending',
+        paymentStatus: paymentMethod === 'before' ? 'paid' : 'pending',
+        paymentMethod,
+        paymentData: paymentData || null,
+        deliveryDate: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        estimatedDelivery: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        tracking: { stage: 1, lastUpdate: orderDate.toISOString(), location: 'Pending admin approval' }
+      };
+      setCart(prev => prev.filter(item => item.type !== 'food'));
+      setOrders(prevOrders => [fallbackOrder, ...prevOrders]);
+      return fallbackOrder;
+    }
   }, [cart]);
 
   // Create a booking (room/hall) after successful payment

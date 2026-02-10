@@ -28,8 +28,12 @@ const securityHeaders = helmet({
 /**
  * CORS configuration
  */
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 const corsConfig = cors({
-  origin: process.env.CORS_ORIGIN || ['http://localhost:5173', 'http://localhost:3000'],
+  origin: corsOrigins,
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

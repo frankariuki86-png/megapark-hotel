@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders } from '../api/mockApi';
+import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, loginAdmin, logoutAdmin } from '../api/mockApi';
 
 const AdminContext = createContext();
 
@@ -236,10 +236,13 @@ export const AdminProvider = ({ children }) => {
           if (remoteMenu && remoteMenu.length > 0) setMenuItems(remoteMenu);
           else await saveMenuItems(menuItems);
         }
-        const remoteOrders = await fetchOrders();
-        if (mounted) {
-          if (remoteOrders && remoteOrders.length > 0) setFoodOrders(remoteOrders);
-          else await saveOrders(foodOrders);
+        // Only fetch orders if user is logged in (has adminUser)
+        if (adminUser) {
+          const remoteOrders = await fetchOrders();
+          if (mounted) {
+            if (remoteOrders && remoteOrders.length > 0) setFoodOrders(remoteOrders);
+            else await saveOrders(foodOrders);
+          }
         }
       } catch (err) {
         // don't block app on mock api failures
@@ -247,27 +250,33 @@ export const AdminProvider = ({ children }) => {
       }
     })();
     return () => { mounted = false };
-  }, []);
+  }, [adminUser]);
 
-  // Mock admin credentials - in production, validate against backend
-  const adminLogin = useCallback((email, password) => {
-    // Simple validation - in production, this would call a backend API
-    if (email === 'admin@megapark.com' && password === 'admin123') {
-      const user = {
-        id: 'admin-001',
-        email,
-        name: 'Admin User',
-        role: 'admin',
+  // Real backend login via API
+  const adminLogin = useCallback(async (email, password) => {
+    try {
+      const result = await loginAdmin(email, password);
+      const user = result.user || {
+        id: result.id || 'admin-001',
+        email: result.email || email,
+        name: result.name || 'Admin User',
+        role: result.role || 'admin',
         loginTime: new Date().toISOString()
       };
       setAdminUser(user);
       localStorage.setItem('adminUser', JSON.stringify(user));
       return { success: true, user };
+    } catch (err) {
+      return { success: false, error: err.message || 'Login failed' };
     }
-    return { success: false, error: 'Invalid credentials' };
   }, []);
 
-  const adminLogout = useCallback(() => {
+  const adminLogout = useCallback(async () => {
+    try {
+      await logoutAdmin();
+    } catch (err) {
+      // ignore logout errors
+    }
     setAdminUser(null);
     localStorage.removeItem('adminUser');
   }, []);

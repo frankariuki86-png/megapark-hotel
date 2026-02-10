@@ -31,18 +31,23 @@ const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess }) => {
     }
 
     setIsProcessing(true);
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      const resp = await fetch('/api/payments/mpesa/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: mpesaForm.phoneNumber, amount: total, accountName: mpesaForm.accountName })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'M-Pesa initiation failed');
+
       setIsProcessing(false);
       setPaymentConfirmed(true);
-      setTransactionId(`MPESA-${Date.now()}`);
-      onPaymentSuccess({
-        method: 'mpesa',
-        phoneNumber: mpesaForm.phoneNumber,
-        amount: total,
-        transactionId: `MPESA-${Date.now()}`
-      });
-    }, 2000);
+      setTransactionId(data.transactionId || `MPESA-${Date.now()}`);
+      onPaymentSuccess({ method: 'mpesa', phoneNumber: mpesaForm.phoneNumber, amount: total, transactionId: data.transactionId || `MPESA-${Date.now()}` });
+    } catch (err) {
+      setIsProcessing(false);
+      alert(err.message || 'M-Pesa payment failed');
+    }
   };
 
   const handleCardPayment = async (e) => {

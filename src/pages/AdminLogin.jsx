@@ -29,17 +29,23 @@ const AdminLogin = () => {
       return;
     }
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const result = adminLogin(email, password);
+    try {
+      const result = await adminLogin(email, password);
       setLoading(false);
 
       if (result.success) {
         navigate('/admin/dashboard');
       } else {
-        setError(result.error || 'Login failed. Please try again.');
+        const errorMsg = result.error || 'Login failed. Please try again.';
+        console.error('[Login Error]', errorMsg);
+        setError(errorMsg);
       }
-    }, 1000);
+    } catch (err) {
+      setLoading(false);
+      const errorMsg = err.message || 'Login failed. Please try again.';
+      console.error('[Login Exception]', errorMsg, err);
+      setError(errorMsg);
+    }
   };
 
   return (

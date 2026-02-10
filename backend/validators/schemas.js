@@ -41,6 +41,7 @@ const OrderCreateSchema = z.object({
   deliveryFee: z.number().min(0).default(0),
   tax: z.number().min(0).default(0),
   totalAmount: z.number().min(0),
+  status: z.enum(['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled']).default('pending'),
   paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).default('pending'),
   paymentMethod: z.string().optional()
 });
@@ -66,11 +67,28 @@ const PaymentIntentSchema = z.object({
   description: z.string().optional()
 });
 
+// Admin User Schemas
+const AdminUserCreateSchema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().min(1, 'Name required').max(255),
+  role: z.enum(['admin', 'staff']).default('staff')
+});
+
+const AdminUserUpdateSchema = z.object({
+  name: z.string().max(255).optional(),
+  role: z.enum(['admin', 'staff']).optional(),
+  isActive: z.boolean().optional()
+}).refine(obj => Object.keys(obj).length > 0, 'At least one field required');
+
 module.exports = {
   MenuItemCreateSchema,
   MenuItemUpdateSchema,
   OrderCreateSchema,
   OrderUpdateSchema,
   LoginSchema,
-  PaymentIntentSchema
+  PaymentIntentSchema,
+  AdminUserCreateSchema,
+  AdminUserUpdateSchema
+  
 };

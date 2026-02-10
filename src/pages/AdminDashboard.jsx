@@ -4,6 +4,7 @@ import { useAdmin } from '../context/AdminContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { ToastProvider } from '../components/Toast';
 import ChartMini from '../components/ChartMini';
+import AdminUsersPage from './AdminUsers';
 import '../styles/admindashboard.css';
 import { Edit, Trash2, Check, X, PlusCircle, LogOut, DownloadCloud, Search } from 'lucide-react';
 
@@ -171,6 +172,9 @@ const AdminDashboard = () => {
         <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>Events</button>
         <button className={`tab-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>Menu</button>
         <button className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>Food Orders</button>
+        {adminUser?.role === 'admin' && (
+          <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>👥 Users</button>
+        )}
       </div>
 
       {/* Content */}
@@ -669,7 +673,13 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Users Tab (Admin Only) */}
+        {activeTab === 'users' && adminUser?.role === 'admin' && (
+          <AdminUsersPage />
+        )}
       </div>
+
       {showConfirm && (
         <ConfirmModal
           isOpen={showConfirm}
