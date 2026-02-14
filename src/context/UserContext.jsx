@@ -12,40 +12,45 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [registeredUsers, setRegisteredUsers] = useState([]);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const register = useCallback((email, password, firstName, lastName, phone) => {
+    // simple in-memory registration (demo). Do not store plaintext passwords in production.
+    const exists = registeredUsers.find(u => u.email === email.toLowerCase());
+    if (exists) {
+      return { ok: false, error: 'An account with that email already exists' };
+    }
     const newUser = {
       id: `USR-${Date.now()}`,
-      email,
+      email: email.toLowerCase(),
+      password, // demo only
       firstName,
       lastName,
       phone,
       createdAt: new Date().toISOString()
     };
-    
-    setUser(newUser);
+    setRegisteredUsers(prev => [...prev, newUser]);
+    setUser({ ...newUser, password: undefined });
     setIsAuthModalOpen(false);
-    return newUser;
+    return { ok: true, user: { ...newUser, password: undefined } };
   }, []);
 
   const login = useCallback((email, password) => {
-    // Simulate login - in production, this would call a backend API
-    const loggedInUser = {
-      id: `USR-${Math.random()}`,
-      email,
-      firstName: email.split('@')[0],
-      lastName: 'User',
-      phone: '+254712345678',
-      createdAt: new Date().toISOString()
-    };
-    
+    const found = registeredUsers.find(u => u.email === (email || '').toLowerCase());
+    if (!found) {
+      return { ok: false, error: 'No account found for that email. Please create an account first.' };
+    }
+    if (found.password !== password) {
+      return { ok: false, error: 'Invalid credentials. Please check your email and password.' };
+    }
+    const loggedInUser = { ...found, password: undefined };
     setUser(loggedInUser);
     setIsAuthModalOpen(false);
-    return loggedInUser;
-  }, []);
+    return { ok: true, user: loggedInUser };
+  }, [registeredUsers]);
 
   const logout = useCallback(() => {
     setUser(null);

@@ -68,9 +68,17 @@ const AuthModal = ({ isOpen, onClose }) => {
 
     if (Object.keys(newErrors).length === 0) {
       if (isLoginMode) {
-        login(formData.email, formData.password);
+        const res = login(formData.email, formData.password);
+        if (res && res.ok === false) {
+          setErrors({ form: res.error });
+          return;
+        }
       } else {
-        register(formData.email, formData.password, formData.firstName, formData.lastName, formData.phone);
+        const res = register(formData.email, formData.password, formData.firstName, formData.lastName, formData.phone);
+        if (res && res.ok === false) {
+          setErrors({ form: res.error });
+          return;
+        }
       }
       setFormData({
         email: '',
@@ -96,6 +104,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           <h2>{isLoginMode ? 'Login' : 'Create Account'}</h2>
 
           <form onSubmit={handleSubmit} className="auth-form">
+            {errors.form && <div className="error-message" style={{marginBottom:12}}>{errors.form}</div>}
             <div className="form-group">
               <label>Email Address</label>
               <input

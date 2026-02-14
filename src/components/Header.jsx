@@ -113,15 +113,6 @@ const Header = () => {
               </select>
             </div>
 
-            {user ? (
-              <div className="user-info">
-                <span className="user-name"><User size={18} /> {user.firstName}</span>
-                <button className="logout-btn-small" onClick={() => logout()} title="Logout" aria-label="Logout"><X size={18} /></button>
-              </div>
-            ) : (
-              <button className="login-btn-header" onClick={() => setIsAuthModalOpen(true)} aria-label="Login"><LogIn size={18} /> Login</button>
-            )}
-            
             <Link to="/orders" className="action-icon orders-icon" title="View Orders" aria-label="View orders">
               <ShoppingCart size={20} />
               <span>Orders</span>
@@ -131,6 +122,15 @@ const Header = () => {
               <ShoppingCart size={20} />
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </Link>
+
+            {user ? (
+              <div className="user-info">
+                <span className="user-name"><User size={18} /> {user.firstName}</span>
+                <button className="logout-btn-small" onClick={() => logout()} title="Logout" aria-label="Logout"><X size={18} /></button>
+              </div>
+            ) : (
+              <button className="login-btn-header" onClick={() => setIsAuthModalOpen(true)} aria-label="Login"><LogIn size={18} /> Login</button>
+            )}
           </div>
         </div>
       </header>
