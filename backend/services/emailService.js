@@ -139,6 +139,26 @@ const templates = {
       </div>
     `
   })
+    ,
+    hallQuoteRequest: (request) => ({
+      subject: `New Hall Quote Request: ${request.hallName || 'Hall'}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px;">
+          <h2>New Hall Quote Request</h2>
+          <p><strong>Hall:</strong> ${request.hallName || 'N/A'}</p>
+          <p><strong>Package:</strong> ${request.packageName || 'N/A'}</p>
+          <p><strong>Event Date:</strong> ${request.eventDate || 'N/A'} ${request.eventTime || ''}</p>
+          <p><strong>Guests:</strong> ${request.guestCount || 'N/A'}</p>
+          <h3>Contact Details</h3>
+          <p><strong>Name:</strong> ${request.contactName || 'N/A'}</p>
+          <p><strong>Email:</strong> ${request.contactEmail || 'N/A'}</p>
+          <p><strong>Phone:</strong> ${request.contactPhone || 'N/A'}</p>
+          ${request.notes ? `<h4>Notes</h4><p>${request.notes}</p>` : ''}
+          <hr/>
+          <p style="color: #666; font-size: 12px;">MegaPark Hotel | Quote Requests</p>
+        </div>
+      `
+    })
 };
 
 /**

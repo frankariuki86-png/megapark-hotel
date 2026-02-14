@@ -11,6 +11,7 @@ import Home from './pages/Home';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import UserProfile from './components/UserProfile';
+import PaymentPage from './pages/PaymentPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import './styles/global.css';
@@ -66,6 +67,11 @@ function App() {
                               url="https://megapark-hotel.com/checkout"
                             />
                             <Checkout />
+                          </>
+                        } />
+                        <Route path="/payment" element={
+                          <>
+                            <PaymentPage />
                           </>
                         } />
                         

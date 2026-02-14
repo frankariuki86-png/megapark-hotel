@@ -1,5 +1,31 @@
 [
   {
+    "id": "ORDER-1771022855167",
+    "customerName": "Frank Kariuki",
+    "customerEmail": "frankariuki86@gmail.com",
+    "customerPhone": "0711768878",
+    "orderType": "dine-in",
+    "orderDate": "2026-02-13T22:47:30.565Z",
+    "deliveryDate": "02/14/2026",
+    "deliveryAddress": null,
+    "items": [
+      {
+        "itemName": "Chapati & Nyama",
+        "quantity": 2,
+        "unitPrice": 1000,
+        "totalPrice": 2000
+      }
+    ],
+    "subtotal": 2000,
+    "deliveryFee": 0,
+    "tax": 240,
+    "totalAmount": 2240,
+    "status": "pending",
+    "paymentStatus": "pending",
+    "paymentMethod": "after",
+    "createdAt": "2026-02-13T22:47:35.167Z"
+  },
+  {
     "id": "ORDER-1770753896563",
     "customerName": "Test User",
     "customerEmail": "test@test.com",

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, loginAdmin, logoutAdmin } from '../api/mockApi';
+import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, loginAdmin, logoutAdmin, fetchHalls, createHall, updateHallApi, deleteHallApi, fetchRooms, createRoom, updateRoomApi, deleteRoomApi } from '../api/mockApi';
 
 const AdminContext = createContext();
 
@@ -226,6 +226,41 @@ export const AdminProvider = ({ children }) => {
     }
   ]);
 
+  const [halls, setHalls] = useState([
+    {
+      id: 'hall-001',
+      name: 'Grand Ballroom',
+      description: 'Spacious hall perfect for weddings, conferences, and large events',
+      capacity: 500,
+      pricePerDay: 50000,
+      images: [],
+      amenities: ['Air Conditioning', 'Sound System', 'Projector', 'Catering Facilities', 'Wheelchair Accessible'],
+      availability: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'hall-002',
+      name: 'Conference Room',
+      description: 'Modern meeting space with latest technology for corporate events',
+      capacity: 100,
+      pricePerDay: 15000,
+      images: [],
+      amenities: ['WiFi', 'Video Conference Setup', 'Whiteboard', 'LED Screen'],
+      availability: true,
+      createdAt: new Date().toISOString()
+    }
+  ]);
+
+  const [halls_state, setHallsState] = useState({
+    loading: false,
+    error: null
+  });
+
+  const [rooms_state, setRoomsState] = useState({
+    loading: false,
+    error: null
+  });
+
   // Initialize mock API storage on mount (seed if empty)
   useEffect(() => {
     let mounted = true;
@@ -235,6 +270,19 @@ export const AdminProvider = ({ children }) => {
         if (mounted) {
           if (remoteMenu && remoteMenu.length > 0) setMenuItems(remoteMenu);
           else await saveMenuItems(menuItems);
+        }
+        // Fetch halls and rooms
+        try {
+          const remoteHalls = await fetchHalls();
+          if (mounted && remoteHalls && remoteHalls.length > 0) setHalls(remoteHalls);
+        } catch (e) {
+          // ignore halls fetch errors
+        }
+        try {
+          const remoteRooms = await fetchRooms();
+          if (mounted && remoteRooms && remoteRooms.length > 0) setRooms(remoteRooms);
+        } catch (e) {
+          // ignore rooms fetch errors
         }
         // Only fetch orders if user is logged in (has adminUser)
         if (adminUser) {
@@ -393,6 +441,64 @@ export const AdminProvider = ({ children }) => {
     return updated;
   }, []);
 
+  // Hall Management
+  const addHall = useCallback(async (hall) => {
+    const created = await createHall(hall);
+    setHalls(prev => [created, ...prev]);
+    return created;
+  }, []);
+
+  const updateHall = useCallback(async (hallId, updates) => {
+    const updated = await updateHallApi(hallId, updates);
+    setHalls(prev => prev.map(h => h.id === hallId ? updated : h));
+    return updated;
+  }, []);
+
+  const deleteHall = useCallback(async (hallId) => {
+    await deleteHallApi(hallId);
+    setHalls(prev => prev.filter(h => h.id !== hallId));
+  }, []);
+
+  const toggleHallAvailability = useCallback(async (hallId) => {
+    setHalls(prev => prev.map(h => h.id === hallId ? { ...h, availability: !h.availability } : h));
+    const cur = halls.find(h => h.id === hallId);
+    const newAvail = cur ? !cur.availability : true;
+    try {
+      await updateHallApi(hallId, { availability: newAvail });
+    } catch (e) {
+      // ignore for mock
+    }
+  }, [halls]);
+
+  // Room Management (for admin)
+  const addRoom = useCallback(async (room) => {
+    const created = await createRoom(room);
+    setRooms(prev => [created, ...prev]);
+    return created;
+  }, []);
+
+  const updateRoomAdmin = useCallback(async (roomId, updates) => {
+    const updated = await updateRoomApi(roomId, updates);
+    setRooms(prev => prev.map(r => r.id === roomId ? updated : r));
+    return updated;
+  }, []);
+
+  const deleteRoom = useCallback(async (roomId) => {
+    await deleteRoomApi(roomId);
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+  }, []);
+
+  const toggleRoomAvailability = useCallback(async (roomId) => {
+    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, availability: !r.availability } : r));
+    const cur = rooms.find(r => r.id === roomId);
+    const newAvail = cur ? !cur.availability : true;
+    try {
+      await updateRoomApi(roomId, { availability: newAvail });
+    } catch (e) {
+      // ignore for mock
+    }
+  }, [rooms]);
+
   const value = {
     adminUser,
     adminLogin,
@@ -400,6 +506,15 @@ export const AdminProvider = ({ children }) => {
     rooms,
     updateRoom,
     blockRoomDates,
+    addRoom,
+    updateRoomAdmin,
+    deleteRoom,
+    toggleRoomAvailability,
+    halls,
+    addHall,
+    updateHall,
+    deleteHall,
+    toggleHallAvailability,
     bookings,
     updateBooking,
     cancelBooking,

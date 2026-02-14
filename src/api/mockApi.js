@@ -103,6 +103,19 @@ export const updateMenuItemApi = (id, updates) => call('PUT', `/api/menu/${id}`,
 export const deleteMenuItemApi = (id) => call('DELETE', `/api/menu/${id}`);
 export const updateMenuItemPrice = (id, price) => call('PUT', `/api/menu/${id}`, { price });
 
+// Halls endpoints
+export const fetchHalls = () => call('GET', '/api/halls');
+export const createHall = (hall) => call('POST', '/api/halls', hall);
+export const updateHallApi = (id, updates) => call('PUT', `/api/halls/${id}`, updates);
+export const deleteHallApi = (id) => call('DELETE', `/api/halls/${id}`);
+export const createHallQuote = (payload) => call('POST', '/api/halls/quote', payload, true);
+
+// Rooms endpoints
+export const fetchRooms = () => call('GET', '/api/rooms');
+export const createRoom = (room) => call('POST', '/api/rooms', room);
+export const updateRoomApi = (id, updates) => call('PUT', `/api/rooms/${id}`, updates);
+export const deleteRoomApi = (id) => call('DELETE', `/api/rooms/${id}`);
+
 // Order endpoints
 export const fetchOrders = () => call('GET', '/api/orders');
 export const createOrder = (order) => call('POST', '/api/orders', order);
@@ -127,6 +140,9 @@ export const saveOrders = (orders) => Promise.resolve(orders);
 
 export default {
   fetchMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, updateMenuItemPrice,
+  fetchHalls, createHall, updateHallApi, deleteHallApi,
+  createHallQuote,
+  fetchRooms, createRoom, updateRoomApi, deleteRoomApi,
   fetchOrders, createOrder, updateOrderApi, loginAdmin, logoutAdmin, refreshAccessToken,
   fetchAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, changeAdminPassword,
   createPaymentIntent, confirmPaymentIntent, getPaymentIntent,

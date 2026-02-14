@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import PaymentGateway from './PaymentGateway';
+import HallQuoteModal from './HallQuoteModal';
 import '../styles/hallbooking.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
@@ -62,7 +62,7 @@ const HallBooking = () => {
     }
   ];
 
-  const handleAddToCart = (hall, pkg) => {
+  const handleRequestQuote = async (hall, pkg) => {
     if (!eventDate || !eventTime) {
       alert('Please select event date and time');
       return;
@@ -107,10 +107,47 @@ const HallBooking = () => {
       image: hall.image,
       area: hall.area
     };
+    // open modal flow (handled below)
+    setSelectedHall(hall);
+    setSelectedPackage(pkg);
+    setShowQuoteModal(true);
+  };
 
-    // require payment before booking: open payment modal and persist on success
-    setPendingBooking(bookingItem);
-    setIsPaymentOpen(true);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+
+  const handleSendQuote = async ({ contactName, contactPhone, contactEmail, notes }) => {
+    if (!selectedHall || !selectedPackage) return;
+    const payload = {
+      hallId: selectedHall.id,
+      hallName: selectedHall.name,
+      packageId: selectedPackage.id,
+      packageName: selectedPackage.name,
+      eventDate,
+      eventTime,
+      guestCount,
+      contactName,
+      contactPhone,
+      contactEmail,
+      notes: notes || ''
+    };
+
+    try {
+      const resp = await fetch('/api/halls/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed to send quote request');
+      setAddedMessage('Your request has been sent. We will contact you with a quotation.');
+      setTimeout(() => setAddedMessage(''), 5000);
+      setShowQuoteModal(false);
+      setSelectedHall(null);
+      setSelectedPackage(null);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send quote request. Please try again later.');
+    }
   };
 
   const handlePaymentSuccess = (paymentData) => {
@@ -216,10 +253,10 @@ const HallBooking = () => {
 
                         <button
                           className="btn btn-select-package"
-                          onClick={() => handleAddToCart(hall, pkg)}
+                          onClick={() => handleRequestQuote(hall, pkg)}
                           disabled={!eventDate || !eventTime || guestCount > hall.capacity}
                         >
-                          {guestCount > hall.capacity ? `Max ${hall.capacity} guests` : 'Add to Cart'}
+                          {guestCount > hall.capacity ? `Max ${hall.capacity} guests` : 'Request Quote'}
                         </button>
 
                         {addedMessage && (
@@ -243,6 +280,7 @@ const HallBooking = () => {
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
+      <HallQuoteModal isOpen={showQuoteModal} onClose={() => setShowQuoteModal(false)} onSubmit={handleSendQuote} initial={{}} />
     </>
   );
 };

@@ -10,15 +10,24 @@ import { Edit, Trash2, Check, X, PlusCircle, LogOut, DownloadCloud, Search } fro
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { adminUser, adminLogout, rooms, bookings, events, updateRoom, updateBooking, cancelBooking, updateEvent, cancelEvent, menuItems, addMenuItem, updateMenuItem, deleteMenuItem, updateMenuItemPrice, toggleMenuItemAvailability, foodOrders, updateFoodOrder, cancelFoodOrder } = useAdmin();
+  const { adminUser, adminLogout, rooms, bookings, events, updateRoom, updateBooking, cancelBooking, updateEvent, cancelEvent, menuItems, addMenuItem, updateMenuItem, deleteMenuItem, updateMenuItemPrice, toggleMenuItemAvailability, foodOrders, updateFoodOrder, cancelFoodOrder, halls, addHall, updateHall, deleteHall, toggleHallAvailability, addRoom, updateRoomAdmin, deleteRoom, toggleRoomAvailability } = useAdmin();
   const [activeTab, setActiveTab] = useState('overview');
   const [editingRoom, setEditingRoom] = useState(null);
+  const [editingHall, setEditingHall] = useState(null);
   const [editingBooking, setEditingBooking] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showAddHall, setShowAddHall] = useState(false);
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [hallSearch, setHallSearch] = useState('');
+  const [roomSearch, setRoomSearch] = useState('');
   const [newMenuItem, setNewMenuItem] = useState({ name: '', description: '', category: 'mains', price: '', preparationTime: 15 });
+  const [newHall, setNewHall] = useState({ name: '', description: '', capacity: '', pricePerDay: '', amenities: [], images: [] });
+  const [newRoom, setNewRoom] = useState({ roomNumber: '', name: '', type: 'standard', description: '', pricePerNight: '', capacity: 2, amenities: [], images: [] });
   const [editingMenuItem, setEditingMenuItem] = useState(null);
   const [editingValues, setEditingValues] = useState({});
+  const [editingHallValues, setEditingHallValues] = useState({});
+  const [editingRoomValues, setEditingRoomValues] = useState({});
   const menuSearchRef = useRef(null);
 
   // UI enhancement states
@@ -167,6 +176,7 @@ const AdminDashboard = () => {
       {/* Navigation Tabs */}
       <div className="admin-nav">
         <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
+        <button className={`tab-btn ${activeTab === 'halls' ? 'active' : ''}`} onClick={() => setActiveTab('halls')}>Halls</button>
         <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} onClick={() => setActiveTab('rooms')}>Rooms</button>
         <button className={`tab-btn ${activeTab === 'bookings' ? 'active' : ''}`} onClick={() => setActiveTab('bookings')}>Bookings</button>
         <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>Events</button>
@@ -242,38 +252,258 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Rooms Tab */}
-        {activeTab === 'rooms' && (
-          <div className="rooms-section">
-            <h2>Room Management</h2>
-            <div className="rooms-grid">
-              {rooms.map(room => (
-                <div key={room.id} className="room-management-card">
-                  <div className="room-header">
-                    <h3>{room.name}</h3>
-                    <span className={`status-badge ${room.status}`}>{room.status}</span>
-                  </div>
-                  <div className="room-details">
-                    <p><strong>Price:</strong> KES {room.price.toLocaleString()}/night</p>
-                    <p><strong>Capacity:</strong> {room.capacity} guests</p>
-                    <p><strong>Amenities:</strong> {room.amenities.length} items</p>
-                  </div>
-                  <button className="edit-btn" onClick={() => setEditingRoom(room.id)}>
-                    ✏️ Edit Room
-                  </button>
+        {/* Halls Tab */}
+        {activeTab === 'halls' && (
+          <div className="halls-section">
+            <div className="halls-header">
+              <h2>Hall Management</h2>
+              <button className="btn-add-menu" onClick={() => setShowAddHall(!showAddHall)}>
+                {showAddHall ? <><X size={14}/> Cancel</> : <><PlusCircle size={14}/> Add Hall</>}
+              </button>
+            </div>
+
+            {showAddHall && (
+              <div className="add-form">
+                <h3>Add New Hall</h3>
+                <div className="form-grid">
+                  <input
+                    type="text"
+                    placeholder="Hall Name"
+                    value={newHall.name}
+                    onChange={(e) => setNewHall({...newHall, name: e.target.value})}
+                  />
+                  <textarea
+                    placeholder="Description"
+                    value={newHall.description}
+                    onChange={(e) => setNewHall({...newHall, description: e.target.value})}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Capacity"
+                    value={newHall.capacity}
+                    onChange={(e) => setNewHall({...newHall, capacity: parseInt(e.target.value) || ''})}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Price Per Day (KES)"
+                    value={newHall.pricePerDay}
+                    onChange={(e) => setNewHall({...newHall, pricePerDay: parseFloat(e.target.value) || ''})}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Amenities (comma-separated)"
+                    defaultValue={newHall.amenities.join(', ')}
+                    onChange={(e) => setNewHall({...newHall, amenities: e.target.value.split(',').map(a => a.trim()).filter(a => a)})}
+                  />
+                </div>
+                <button className="btn-save-menu" onClick={() => {
+                  if (newHall.name && newHall.capacity && newHall.pricePerDay) {
+                    addHall(newHall);
+                    pushToast('Hall added', 'success');
+                    setNewHall({ name: '', description: '', capacity: '', pricePerDay: '', amenities: [], images: [] });
+                    setShowAddHall(false);
+                  } else {
+                    pushToast('Please provide name, capacity and price', 'error');
+                  }
+                }}>Save Hall</button>
+              </div>
+            )}
+
+            <div style={{display:'flex', gap:12, alignItems:'center', marginBottom:12}}>
+              <input className="search-input" placeholder="Search halls..." value={hallSearch} onChange={(e)=>setHallSearch(e.target.value)} />
+            </div>
+            <div className="halls-grid">
+              {halls.filter(h => (h.name + ' ' + (h.description||'')).toLowerCase().includes(hallSearch.toLowerCase())).map(hall => (
+                <div key={hall.id} className={`hall-card ${editingHall === hall.id ? 'editing' : ''}`}>
+                  {editingHall === hall.id ? (
+                    <div className="hall-edit-form">
+                      <input value={editingHallValues.name || ''} onChange={(e)=>setEditingHallValues(prev=>({...prev, name: e.target.value}))} placeholder="Name" />
+                      <textarea value={editingHallValues.description || ''} onChange={(e)=>setEditingHallValues(prev=>({...prev, description: e.target.value}))} placeholder="Description" />
+                      <input type="number" value={editingHallValues.capacity || ''} onChange={(e)=>setEditingHallValues(prev=>({...prev, capacity: parseInt(e.target.value)}))} placeholder="Capacity" />
+                      <input type="number" value={editingHallValues.pricePerDay || ''} onChange={(e)=>setEditingHallValues(prev=>({...prev, pricePerDay: parseFloat(e.target.value)}))} placeholder="Price Per Day" />
+                      <div className="edit-actions">
+                        <button className="action-btn confirm" onClick={() => {
+                          updateHall(hall.id, editingHallValues);
+                          pushToast('Hall updated', 'success');
+                          setEditingHall(null);
+                          setEditingHallValues({});
+                        }}><Check size={14}/> Save</button>
+                        <button className="action-btn cancel" onClick={() => { setEditingHall(null); setEditingHallValues({}); }}><X size={14}/> Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h4>{hall.name}</h4>
+                      <p>{hall.description}</p>
+                      <div className="hall-details">
+                        <span><strong>Capacity:</strong> {hall.capacity} guests</span>
+                        <span><strong>Price:</strong> KES {hall.pricePerDay?.toLocaleString() || 0}/day</span>
+                      </div>
+                      {hall.amenities && hall.amenities.length > 0 && (
+                        <div className="amenities">
+                          <strong>Amenities:</strong>
+                          <ul>
+                            {hall.amenities.map((a, i) => (<li key={i}>{a}</li>))}
+                          </ul>
+                        </div>
+                      )}
+                      <span className={`availability-badge ${hall.availability ? 'available' : 'unavailable'}`}>
+                        {hall.availability ? '✓ Available' : '✕ Unavailable'}
+                      </span>
+                      <div className="card-actions">
+                        <button className="action-btn" onClick={() => { setEditingHall(hall.id); setEditingHallValues(hall); }} title="Edit"><Edit size={14}/> Edit</button>
+                        <button className="action-btn toggle" onClick={() => { toggleHallAvailability(hall.id); pushToast(hall.availability ? 'Hall disabled' : 'Hall enabled', 'info') }}>
+                          {hall.availability ? 'Disable' : 'Enable'}
+                        </button>
+                        <button className="action-btn delete" onClick={() => { setConfirmPayload({ type: 'delete', id: hall.id }); setShowConfirm(true); }}>
+                          <Trash2 size={14}/> Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {editingRoom && (
-              <div className="edit-modal">
-                <div className="modal-content">
-                  <h3>Edit Room: {rooms.find(r => r.id === editingRoom)?.name}</h3>
-                  <p className="info-text">Room editing feature - connect to backend to save changes</p>
-                  <button className="close-btn" onClick={() => setEditingRoom(null)}>Close</button>
+        {/* Rooms Tab */}
+        {activeTab === 'rooms' && (
+          <div className="rooms-section">
+            <div className="rooms-header">
+              <h2>Room Management</h2>
+              <button className="btn-add-menu" onClick={() => setShowAddRoom(!showAddRoom)}>
+                {showAddRoom ? <><X size={14}/> Cancel</> : <><PlusCircle size={14}/> Add Room</>}
+              </button>
+            </div>
+
+            {showAddRoom && (
+              <div className="add-form">
+                <h3>Add New Room</h3>
+                <div className="form-grid">
+                  <input
+                    type="text"
+                    placeholder="Room Number"
+                    value={newRoom.roomNumber}
+                    onChange={(e) => setNewRoom({...newRoom, roomNumber: e.target.value})}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Room Name"
+                    value={newRoom.name}
+                    onChange={(e) => setNewRoom({...newRoom, name: e.target.value})}
+                  />
+                  <select
+                    value={newRoom.type}
+                    onChange={(e) => setNewRoom({...newRoom, type: e.target.value})}
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="double">Double</option>
+                    <option value="deluxe">Deluxe</option>
+                    <option value="suite">Suite</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                  <textarea
+                    placeholder="Description"
+                    value={newRoom.description}
+                    onChange={(e) => setNewRoom({...newRoom, description: e.target.value})}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Price Per Night (KES)"
+                    value={newRoom.pricePerNight}
+                    onChange={(e) => setNewRoom({...newRoom, pricePerNight: parseFloat(e.target.value) || ''})}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Capacity"
+                    value={newRoom.capacity}
+                    onChange={(e) => setNewRoom({...newRoom, capacity: parseInt(e.target.value) || 2})}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Amenities (comma-separated)"
+                    defaultValue={newRoom.amenities.join(', ')}
+                    onChange={(e) => setNewRoom({...newRoom, amenities: e.target.value.split(',').map(a => a.trim()).filter(a => a)})}
+                  />
                 </div>
+                <button className="btn-save-menu" onClick={() => {
+                  if (newRoom.roomNumber && newRoom.name && newRoom.pricePerNight) {
+                    addRoom(newRoom);
+                    pushToast('Room added', 'success');
+                    setNewRoom({ roomNumber: '', name: '', type: 'standard', description: '', pricePerNight: '', capacity: 2, amenities: [], images: [] });
+                    setShowAddRoom(false);
+                  } else {
+                    pushToast('Please provide room number, name and price', 'error');
+                  }
+                }}>Save Room</button>
               </div>
             )}
+
+            <div style={{display:'flex', gap:12, alignItems:'center', marginBottom:12}}>
+              <input className="search-input" placeholder="Search rooms..." value={roomSearch} onChange={(e)=>setRoomSearch(e.target.value)} />
+            </div>
+            <div className="rooms-grid">
+              {rooms.filter(r => (r.name + ' ' + (r.roomNumber||'')).toLowerCase().includes(roomSearch.toLowerCase())).map(room => (
+                <div key={room.id} className={`room-card ${editingRoom === room.id ? 'editing' : ''}`}>
+                  {editingRoom === room.id ? (
+                    <div className="room-edit-form">
+                      <input value={editingRoomValues.roomNumber || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, roomNumber: e.target.value}))} placeholder="Room Number" />
+                      <input value={editingRoomValues.name || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, name: e.target.value}))} placeholder="Name" />
+                      <select value={editingRoomValues.type || 'standard'} onChange={(e)=>setEditingRoomValues(prev=>({...prev, type: e.target.value}))}>
+                        <option value="standard">Standard</option>
+                        <option value="double">Double</option>
+                        <option value="deluxe">Deluxe</option>
+                        <option value="suite">Suite</option>
+                        <option value="executive">Executive</option>
+                      </select>
+                      <textarea value={editingRoomValues.description || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, description: e.target.value}))} placeholder="Description" />
+                      <input type="number" value={editingRoomValues.pricePerNight || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, pricePerNight: parseFloat(e.target.value)}))} placeholder="Price Per Night" />
+                      <input type="number" value={editingRoomValues.capacity || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, capacity: parseInt(e.target.value)}))} placeholder="Capacity" />
+                      <div className="edit-actions">
+                        <button className="action-btn confirm" onClick={() => {
+                          updateRoomAdmin(room.id, editingRoomValues);
+                          pushToast('Room updated', 'success');
+                          setEditingRoom(null);
+                          setEditingRoomValues({});
+                        }}><Check size={14}/> Save</button>
+                        <button className="action-btn cancel" onClick={() => { setEditingRoom(null); setEditingRoomValues({}); }}><X size={14}/> Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h4>{room.name} ({room.roomNumber})</h4>
+                      <p className="room-type">{room.type}</p>
+                      <p>{room.description}</p>
+                      <div className="room-details">
+                        <span><strong>Capacity:</strong> {room.capacity} guests</span>
+                        <span><strong>Price:</strong> KES {room.pricePerNight?.toLocaleString() || 0}/night</span>
+                      </div>
+                      {room.amenities && room.amenities.length > 0 && (
+                        <div className="amenities">
+                          <strong>Amenities:</strong>
+                          <ul>
+                            {room.amenities.map((a, i) => (<li key={i}>{a}</li>))}
+                          </ul>
+                        </div>
+                      )}
+                      <span className={`availability-badge ${room.availability ? 'available' : 'unavailable'}`}>
+                        {room.availability ? '✓ Available' : '✕ Unavailable'}
+                      </span>
+                      <div className="card-actions">
+                        <button className="action-btn" onClick={() => { setEditingRoom(room.id); setEditingRoomValues(room); }} title="Edit"><Edit size={14}/> Edit</button>
+                        <button className="action-btn toggle" onClick={() => { toggleRoomAvailability(room.id); pushToast(room.availability ? 'Room disabled' : 'Room enabled', 'info') }}>
+                          {room.availability ? 'Disable' : 'Enable'}
+                        </button>
+                        <button className="action-btn delete" onClick={() => { setConfirmPayload({ type: 'delete', id: room.id }); setShowConfirm(true); }}>
+                          <Trash2 size={14}/> Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -19,7 +19,10 @@ const Checkout = () => {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    address: user?.address || '',
+    county: '',
+    town: '',
+    street: '',
+    building: '',
     specialRequests: ''
   });
 
@@ -60,8 +63,8 @@ const Checkout = () => {
 
   const handlePlaceOrder = () => {
     // Validate customer info
-    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone) {
-      alert('Please fill in all required customer details (Name, Email, Phone)');
+    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.county || !customerInfo.town || !customerInfo.street) {
+      alert('Please fill in required customer details (Name, Email, Phone and full delivery address)');
       return;
     }
 
@@ -95,7 +98,15 @@ const Checkout = () => {
       customerName: customerInfo.name,
       customerEmail: customerInfo.email,
       customerPhone: customerInfo.phone,
-      deliveryAddress: customerInfo.address,
+      deliveryAddress: {
+        fullName: customerInfo.name,
+        phone: customerInfo.phone,
+        county: customerInfo.county,
+        town: customerInfo.town,
+        street: customerInfo.street,
+        building: customerInfo.building || null,
+        instructions: customerInfo.specialRequests || null
+      },
       specialRequests: customerInfo.specialRequests,
       paymentMethod: 'after'
     };
@@ -113,7 +124,15 @@ const Checkout = () => {
       customerName: customerInfo.name,
       customerEmail: customerInfo.email,
       customerPhone: customerInfo.phone,
-      deliveryAddress: customerInfo.address,
+      deliveryAddress: {
+        fullName: customerInfo.name,
+        phone: customerInfo.phone,
+        county: customerInfo.county,
+        town: customerInfo.town,
+        street: customerInfo.street,
+        building: customerInfo.building || null,
+        instructions: customerInfo.specialRequests || null
+      },
       specialRequests: customerInfo.specialRequests,
       paymentMethod: 'before',
       paymentData
@@ -207,12 +226,45 @@ const Checkout = () => {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Address</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>County *</label>
                 <input
                   type="text"
-                  placeholder="Delivery address"
-                  value={customerInfo.address}
-                  onChange={(e) => handleCustomerInfoChange('address', e.target.value)}
+                  placeholder="County"
+                  value={customerInfo.county}
+                  onChange={(e) => handleCustomerInfoChange('county', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Town *</label>
+                <input
+                  type="text"
+                  placeholder="Town / Suburb"
+                  value={customerInfo.town}
+                  onChange={(e) => handleCustomerInfoChange('town', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Street / Building *</label>
+                <input
+                  type="text"
+                  placeholder="Street name, building or landmark"
+                  value={customerInfo.street}
+                  onChange={(e) => handleCustomerInfoChange('street', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Building / Unit</label>
+                <input
+                  type="text"
+                  placeholder="Apartment, suite or building"
+                  value={customerInfo.building}
+                  onChange={(e) => handleCustomerInfoChange('building', e.target.value)}
                   style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
                 />
               </div>

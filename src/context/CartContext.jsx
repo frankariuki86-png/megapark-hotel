@@ -76,9 +76,23 @@ export const CartProvider = ({ children }) => {
 
   // Place an order for menu (food) items. Sends to backend and waits for admin approval.
   // Status defaults to 'pending' until admin confirms.
-  const placeMenuOrder = useCallback(async ({ customerName = '', customerEmail = '', customerPhone = '', orderType = 'dine-in', deliveryAddress = '', paymentMethod = 'after', paymentData = null, deliveryDate = null } = {}) => {
+  const placeMenuOrder = useCallback(async ({ customerName = '', customerEmail = '', customerPhone = '', orderType = 'dine-in', deliveryAddress = null, paymentMethod = 'after', paymentData = null, deliveryDate = null } = {}) => {
     const menuItems = cart.filter(item => item.type === 'food');
     if (menuItems.length === 0) return null;
+
+    // Validate structured delivery address when required
+    if (orderType === 'delivery') {
+      const required = ['fullName','phone','county','town','street'];
+      if (!deliveryAddress || typeof deliveryAddress !== 'object') {
+        alert('Delivery address is required for delivery orders');
+        return null;
+      }
+      const missing = required.filter(k => !deliveryAddress[k]);
+      if (missing.length > 0) {
+        alert(`Please provide delivery address fields: ${missing.join(', ')}`);
+        return null;
+      }
+    }
 
     const orderDate = new Date();
     const subtotal = menuItems.reduce((t, it) => t + (it.price * it.quantity), 0);

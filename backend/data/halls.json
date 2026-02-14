@@ -1,0 +1,60 @@
+[
+  {
+    "id": "hall-001",
+    "name": "Grand Ballroom",
+    "description": "Spacious hall perfect for weddings, conferences, and large events with elegant decor and modern facilities",
+    "capacity": 500,
+    "pricePerDay": 50000,
+    "images": [],
+    "amenities": [
+      "Air Conditioning",
+      "Sound System",
+      "Projector",
+      "Catering Facilities",
+      "Wheelchair Accessible",
+      "Dance Floor",
+      "Stage"
+    ],
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "hall-002",
+    "name": "Conference Room",
+    "description": "Modern meeting space with latest technology for corporate events, seminars, and business meetings",
+    "capacity": 100,
+    "pricePerDay": 15000,
+    "images": [],
+    "amenities": [
+      "WiFi",
+      "Video Conference Setup",
+      "Whiteboard",
+      "LED Screen",
+      "Air Conditioning",
+      "Parking"
+    ],
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "hall-003",
+    "name": "Banquet Hall",
+    "description": "Elegant dining space perfect for receptions, banquets, and formal events with full catering service",
+    "capacity": 300,
+    "pricePerDay": 40000,
+    "images": [],
+    "amenities": [
+      "Full Kitchen",
+      "Serving Station",
+      "Air Conditioning",
+      "Sound System",
+      "Lighting Control",
+      "Valet Parking"
+    ],
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  }
+]

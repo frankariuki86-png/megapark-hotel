@@ -48,7 +48,13 @@ let pgClient = null;
 (async () => {
   if (DATABASE_URL) {
     try {
-      pgClient = new Client({ connectionString: DATABASE_URL });
+      const clientOptions = { connectionString: DATABASE_URL };
+      // Honor PGSSLMODE=require or query param sslmode=require for managed DBs
+      const pgSslRequired = (process.env.PGSSLMODE && process.env.PGSSLMODE === 'require') || (DATABASE_URL && DATABASE_URL.includes('sslmode=require'));
+      if (pgSslRequired) {
+        clientOptions.ssl = { rejectUnauthorized: false };
+      }
+      pgClient = new Client(clientOptions);
       await pgClient.connect();
       logger.info('Connected to Postgres');
     } catch (e) {
@@ -84,14 +90,27 @@ const paymentsRouter = require('./routes/payments')({ logger, readJSON, writeJSO
 const adminUsersPath = path.join(dataDir, 'admin-users.json');
 const adminUsersRouter = require('./routes/admin-users')({ pgClient, readJSON, writeJSON, adminUsersPath, logger });
 
+// Halls and Rooms routes
+const hallsPath = path.join(dataDir, 'halls.json');
+if (!fs.existsSync(hallsPath)) fs.writeFileSync(hallsPath, JSON.stringify([], null, 2));
+const hallsRouter = require('./routes/halls')({ pgClient, readJSON, writeJSON, hallsPath, logger });
+
+const roomsPath = path.join(dataDir, 'rooms.json');
+if (!fs.existsSync(roomsPath)) fs.writeFileSync(roomsPath, JSON.stringify([], null, 2));
+const roomsRouter = require('./routes/rooms')({ pgClient, readJSON, writeJSON, roomsPath, logger });
+const hallQuoteRouter = require('./routes/hall-quote')({ logger });
+
 // Apply rate limiting to auth endpoints
 app.use('/api/auth/login', authRateLimit);
 app.use('/api/auth/refresh', authRateLimit);
 
 // Apply API rate limit to data endpoints
 app.use('/api/menu', apiRateLimit);
+app.use('/api/halls', apiRateLimit);
+app.use('/api/rooms', apiRateLimit);
 app.use('/api/orders', apiRateLimit);
 app.use('/api/payments', apiRateLimit);
+app.use('/api/halls/quote', apiRateLimit);
 
 // Enforce authentication on menu endpoints (tests expect auth-required)
 app.use('/api/menu', (req, res, next) => {
@@ -103,6 +122,9 @@ app.use('/api/menu', (req, res, next) => {
 // Mount routes
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
+app.use('/api/halls', hallsRouter);
+app.use('/api/rooms', roomsRouter);
+app.use('/api/halls/quote', hallQuoteRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/admin/users', adminUsersRouter);

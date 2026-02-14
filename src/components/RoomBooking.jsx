@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
+// Payment will be handled on a dedicated payment page
 import ImageGallery from './ImageGallery';
 import ReviewSection from './ReviewSection';
 import AvailabilityCalendar from './AvailabilityCalendar';
@@ -10,13 +11,14 @@ const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
 const RoomBooking = () => {
-  const { addToCart, cart } = useCart();
   const navigate = useNavigate();
+  const { user, setIsAuthModalOpen } = useUser();
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [guests, setGuests] = useState(1);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [addedMessage, setAddedMessage] = useState('');
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [pendingBooking, setPendingBooking] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const rooms = [
     {
@@ -61,7 +63,13 @@ const RoomBooking = () => {
 
   const nights = calculateNights();
 
-  const handleAddToCart = (room) => {
+  const handleBookRoom = (room) => {
+    if (!user) {
+      alert('Please login to proceed with booking');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     if (!checkInDate || !checkOutDate) {
       alert('Please select check-in and check-out dates');
       return;
@@ -74,8 +82,8 @@ const RoomBooking = () => {
 
     const totalPrice = room.price * nights;
 
-    const bookingItem = {
-      id: `${room.id}-${checkInDate}-${checkOutDate}`,
+    const booking = {
+      id: `${room.id}-${Date.now()}`,
       type: 'room',
       name: room.name,
       price: totalPrice,
@@ -84,22 +92,14 @@ const RoomBooking = () => {
       checkInDate,
       checkOutDate,
       guests,
-      capacity: room.capacity,
-      amenities: room.amenities,
-      description: room.description,
-      image: room.image
+      room
     };
 
-    // add to cart and redirect to checkout for payment
-    addToCart(bookingItem);
-    const updatedCart = [...cart, bookingItem];
-    const cartTotal = updatedCart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
-    setAddedMessage(`✓ ${room.name} added! Cart total: KES ${cartTotal.toLocaleString()}`);
-    setTimeout(() => {
-      setAddedMessage('');
-      navigate('/checkout');
-    }, 2000);
+    // redirect to payment page with booking in state
+    navigate('/payment', { state: { booking } });
   };
+
+  // payment success is handled on the Payment page
 
 
 
@@ -111,112 +111,81 @@ const RoomBooking = () => {
   };
 
   return (
-    <section id="rooms" className="room-booking">
-      <div className="room-booking-container">
-        <h2>Book Your Room</h2>
-        <p className="section-subtitle">Find the perfect accommodation for your stay</p>
+    <>
+      {successMessage && (
+        <div className="success-banner">{successMessage}</div>
+      )}
 
-        <div className="booking-filters">
-          <div className="filter-group">
-            <label htmlFor="check-in">Check-in Date</label>
-            <input
-              id="check-in"
-              type="date"
-              value={checkInDate}
-              onChange={(e) => {
-                setCheckInDate(e.target.value);
-                if (checkOutDate && new Date(e.target.value) >= new Date(checkOutDate)) {
-                  setCheckOutDate('');
-                }
-              }}
-              min={new Date().toISOString().split('T')[0]}
-            />
-          </div>
+      <section id="rooms" className="room-booking">
+        <div className="room-booking-container">
+          <h2>Book Your Room</h2>
+          <p className="section-subtitle">Find the perfect accommodation for your stay</p>
 
-          <div className="filter-group">
-            <label htmlFor="check-out">Check-out Date</label>
-            <input
-              id="check-out"
-              type="date"
-              value={checkOutDate}
-              onChange={(e) => setCheckOutDate(e.target.value)}
-              min={getMinCheckOut()}
-            />
-          </div>
-
-          <div className="filter-group">
-            <label htmlFor="guests">Number of Guests</label>
-            <select
-              id="guests"
-              value={guests}
-              onChange={(e) => setGuests(parseInt(e.target.value))}
-            >
-              {[1, 2, 3, 4, 5, 6].map(num => (
-                <option key={num} value={num}>{num} {num === 1 ? 'Guest' : 'Guests'}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {nights > 0 && (
-          <div className="booking-info">
-            <p>📅 {nights} night{nights !== 1 ? 's' : ''} | 👥 {guests} guest{guests !== 1 ? 's' : ''}</p>
-          </div>
-        )}
-
-        <div className="rooms-grid">
-          {rooms.map(room => (
-            <div key={room.id} className="room-card">
-              <div className="room-image">
-                <ImageGallery images={room.images} roomName={room.name} />
-                <div className="room-capacity">
-                  👥 Up to {room.capacity} guests
-                </div>
-              </div>
-
-              <div className="room-content">
-                <h3>{room.name}</h3>
-                <p className="room-description">{room.description}</p>
-
-                <div className="room-amenities">
-                  <h4>Amenities</h4>
-                  <ul>
-                    {room.amenities.map((amenity, idx) => (
-                      <li key={idx}>✓ {amenity}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="room-pricing">
-                  <span className="price-per-night">KES {room.price.toLocaleString()} / night</span>
-                  {nights > 0 && (
-                    <span className="total-price">
-                      Total: KES {(room.price * nights).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  className="btn btn-book"
-                  onClick={() => handleAddToCart(room)}
-                  disabled={!checkInDate || !checkOutDate || guests > room.capacity}
-                >
-                  {guests > room.capacity ? `Max ${room.capacity} guests` : '→ Book Now'}
-                </button>
-
-                {addedMessage === `✓ ${room.name} added! Cart total: KES ${[...cart, { price: room.price * nights }].reduce((total, item) => total + (item.price * (item.quantity || 1)), 0).toLocaleString()}` && (
-                  <div className="success-message">{addedMessage}</div>
-                )}
-              </div>
-
-              <ReviewSection roomId={room.id} roomName={room.name} />
-              <AvailabilityCalendar roomId={room.id} roomName={room.name} />
+          <div className="booking-filters">
+            <div className="filter-group">
+              <label htmlFor="check-in">Check-in Date</label>
+              <input
+                id="check-in"
+                type="date"
+                value={checkInDate}
+                onChange={(e) => {
+                  setCheckInDate(e.target.value);
+                  if (checkOutDate && new Date(e.target.value) >= new Date(checkOutDate)) setCheckOutDate('');
+                }}
+                min={new Date().toISOString().split('T')[0]}
+              />
             </div>
-          ))}
-        </div>
-      </div>
 
-    </section>
+            <div className="filter-group">
+              <label htmlFor="check-out">Check-out Date</label>
+              <input id="check-out" type="date" value={checkOutDate} onChange={(e) => setCheckOutDate(e.target.value)} min={getMinCheckOut()} />
+            </div>
+
+            <div className="filter-group">
+              <label htmlFor="guests">Number of Guests</label>
+              <select id="guests" value={guests} onChange={(e) => setGuests(parseInt(e.target.value))}>
+                {[1,2,3,4,5,6].map(num => <option key={num} value={num}>{num} {num===1? 'Guest':'Guests'}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {nights > 0 && <div className="booking-info"><p>📅 {nights} night{nights!==1?'s':''} | 👥 {guests} guest{guests!==1?'s':''}</p></div>}
+
+          <div className="rooms-grid">
+            {rooms.map(room => (
+              <div key={room.id} className="room-card">
+                <div className="room-image">
+                  <ImageGallery images={room.images} roomName={room.name} />
+                  <div className="room-capacity">👥 Up to {room.capacity} guests</div>
+                </div>
+
+                <div className="room-content">
+                  <h3>{room.name}</h3>
+                  <p className="room-description">{room.description}</p>
+
+                  <div className="room-amenities">
+                    <h4>Amenities</h4>
+                    <ul>{room.amenities.map((a,i)=>(<li key={i}>✓ {a}</li>))}</ul>
+                  </div>
+
+                  <div className="room-pricing">
+                    <span className="price-per-night">KES {room.price.toLocaleString()} / night</span>
+                    {nights>0 && <span className="total-price">Total: KES {(room.price * nights).toLocaleString()}</span>}
+                  </div>
+
+                  <button className="btn btn-book" onClick={() => handleBookRoom(room)} disabled={!checkInDate || !checkOutDate || guests > room.capacity}>
+                    {guests > room.capacity ? `Max ${room.capacity} guests` : '🔒 Secure Payment'}
+                  </button>
+                </div>
+
+                <ReviewSection roomId={room.id} roomName={room.name} />
+                <AvailabilityCalendar roomId={room.id} roomName={room.name} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   );
 };
 

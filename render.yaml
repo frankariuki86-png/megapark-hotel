@@ -1,0 +1,25 @@
+# Render service manifest for Megapark backend
+services:
+  - type: web
+    name: megapark-backend
+    env: node
+    region: oregon
+    plan: free
+    repo: .
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    root: backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '3000'
+      - key: PGSSLMODE
+        value: require
+
+databases:
+  - name: megapark-db
+    plan: starter
+    region: oregon

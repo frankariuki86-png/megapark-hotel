@@ -35,7 +35,15 @@ const OrderCreateSchema = z.object({
   orderType: z.enum(['delivery', 'dine-in', 'pickup']).default('dine-in'),
   orderDate: z.string().datetime().optional(),
   deliveryDate: z.string().nullable().optional(),
-  deliveryAddress: z.string().nullable().optional(),
+  deliveryAddress: z.object({
+    fullName: z.string().min(1),
+    phone: z.string().min(5),
+    county: z.string().min(1),
+    town: z.string().min(1),
+    street: z.string().min(1),
+    building: z.string().optional().nullable(),
+    instructions: z.string().optional().nullable()
+  }).nullable().optional(),
   items: z.array(OrderItemSchema).optional(),
   subtotal: z.number().min(0).optional().default(0),
   deliveryFee: z.number().min(0).default(0),
@@ -83,6 +91,52 @@ const AdminUserUpdateSchema = z.object({
   isActive: z.boolean().optional()
 }).refine(obj => Object.keys(obj).length > 0, 'At least one field required');
 
+// Hall Schemas
+const HallCreateSchema = z.object({
+  name: z.string().min(1, 'name required').max(255),
+  description: z.string().optional(),
+  capacity: z.number().int().min(1, 'capacity must be > 0'),
+  pricePerDay: z.number().min(0, 'price must be >= 0'),
+  images: z.array(z.string()).optional().default([]),
+  amenities: z.array(z.string()).optional().default([]),
+  availability: z.boolean().optional().default(true)
+});
+
+const HallUpdateSchema = z.object({
+  name: z.string().max(255).optional(),
+  description: z.string().optional(),
+  capacity: z.number().int().min(1).optional(),
+  pricePerDay: z.number().min(0).optional(),
+  images: z.array(z.string()).optional(),
+  amenities: z.array(z.string()).optional(),
+  availability: z.boolean().optional()
+}).refine(obj => Object.keys(obj).length > 0, 'At least one field required');
+
+// Room Schemas
+const RoomCreateSchema = z.object({
+  roomNumber: z.string().min(1, 'room number required').max(50),
+  name: z.string().min(1, 'name required').max(255),
+  type: z.enum(['standard', 'double', 'deluxe', 'suite', 'executive']).default('standard'),
+  description: z.string().optional(),
+  pricePerNight: z.number().min(0, 'price must be >= 0'),
+  images: z.array(z.string()).optional().default([]),
+  amenities: z.array(z.string()).optional().default([]),
+  capacity: z.number().int().min(1).optional().default(2),
+  availability: z.boolean().optional().default(true)
+});
+
+const RoomUpdateSchema = z.object({
+  roomNumber: z.string().max(50).optional(),
+  name: z.string().max(255).optional(),
+  type: z.enum(['standard', 'double', 'deluxe', 'suite', 'executive']).optional(),
+  description: z.string().optional(),
+  pricePerNight: z.number().min(0).optional(),
+  images: z.array(z.string()).optional(),
+  amenities: z.array(z.string()).optional(),
+  capacity: z.number().int().min(1).optional(),
+  availability: z.boolean().optional()
+}).refine(obj => Object.keys(obj).length > 0, 'At least one field required');
+
 module.exports = {
   MenuItemCreateSchema,
   MenuItemUpdateSchema,
@@ -91,6 +145,10 @@ module.exports = {
   LoginSchema,
   PaymentIntentSchema,
   AdminUserCreateSchema,
-  AdminUserUpdateSchema
+  AdminUserUpdateSchema,
+  HallCreateSchema,
+  HallUpdateSchema,
+  RoomCreateSchema,
+  RoomUpdateSchema
   
 };

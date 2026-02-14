@@ -1,0 +1,95 @@
+[
+  {
+    "id": "room-001",
+    "roomNumber": "101",
+    "name": "Standard Room",
+    "type": "standard",
+    "description": "Comfortable and affordable accommodation perfect for single travelers or couples",
+    "pricePerNight": 5000,
+    "images": [],
+    "amenities": [
+      "Free WiFi",
+      "Air Conditioning",
+      "En-suite Bathroom",
+      "Flat-screen TV",
+      "Work Desk",
+      "24-hour Room Service"
+    ],
+    "capacity": 2,
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "room-002",
+    "roomNumber": "201",
+    "name": "Deluxe Room",
+    "type": "deluxe",
+    "description": "Spacious room with premium amenities and stunning views of the resort grounds",
+    "pricePerNight": 8000,
+    "images": [],
+    "amenities": [
+      "Free WiFi",
+      "Air Conditioning",
+      "En-suite Bathroom",
+      "Flat-screen TV",
+      "Mini Bar",
+      "Safe",
+      "Bathrobe & Slippers",
+      "Work Area"
+    ],
+    "capacity": 3,
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "room-003",
+    "roomNumber": "301",
+    "name": "Executive Suite",
+    "type": "executive",
+    "description": "Luxurious suite with separate living area, premium amenities, and personalized services",
+    "pricePerNight": 12000,
+    "images": [],
+    "amenities": [
+      "Free WiFi",
+      "Air Conditioning",
+      "En-suite Bathroom",
+      "Smart TV",
+      "Mini Bar",
+      "Safe",
+      "Bathrobe & Slippers",
+      "Jacuzzi Tub",
+      "Living Area",
+      "Premium Toiletries",
+      "Concierge Service"
+    ],
+    "capacity": 4,
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "room-004",
+    "roomNumber": "102",
+    "name": "Double Room",
+    "type": "double",
+    "description": "Spacious room with two beds, perfect for friends or family groups traveling together",
+    "pricePerNight": 6500,
+    "images": [],
+    "amenities": [
+      "Free WiFi",
+      "Air Conditioning",
+      "En-suite Bathroom",
+      "Flat-screen TV",
+      "Twin Beds",
+      "Reading Lamps",
+      "24-hour Room Service",
+      "Coffee Maker"
+    ],
+    "capacity": 2,
+    "availability": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  }
+]
