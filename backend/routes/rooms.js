@@ -4,12 +4,9 @@ const { authenticate } = require('../middleware/authenticate');
 const { RoomCreateSchema, RoomUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
-  // GET - List all rooms (protected)
-  router.get('/', authenticate, async (req, res) => {
+  // GET - List all rooms (public)
+  router.get('/', async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized: missing or invalid token' });
-
       if (pgClient) {
         const { rows } = await pgClient.query('SELECT * FROM rooms ORDER BY created_at DESC');
         return res.json(rows);

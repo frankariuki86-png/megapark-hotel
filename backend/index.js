@@ -122,13 +122,6 @@ app.use('/api/orders', apiRateLimit);
 app.use('/api/payments', apiRateLimit);
 app.use('/api/halls/quote', apiRateLimit);
 
-// Enforce authentication on menu endpoints (tests expect auth-required)
-app.use('/api/menu', (req, res, next) => {
-  const auth = req.headers['authorization'];
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized: missing or invalid token' });
-  next();
-});
-
 // Mount routes
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
@@ -155,6 +148,15 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(`Server started on port ${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    logger.error(`Port ${PORT} is already in use`);
+  } else {
+    logger.error('Server error:', err.message);
+  }
+  process.exit(1);
 });

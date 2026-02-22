@@ -4,13 +4,9 @@ const { authenticate } = require('../middleware/authenticate');
 const { MenuItemCreateSchema, MenuItemUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
-  // GET - List all menu items (protected)
-  router.get('/', authenticate, async (req, res) => {
+  // GET - List all menu items (public)
+  router.get('/', async (req, res) => {
     try {
-      // explicit guard in case middleware is bypassed in some envs
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized: missing or invalid token' });
-
       if (pgClient) {
         const { rows } = await pgClient.query('SELECT * FROM menu_items ORDER BY created_at DESC');
         return res.json(rows);

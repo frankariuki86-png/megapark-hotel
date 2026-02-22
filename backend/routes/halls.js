@@ -4,12 +4,9 @@ const { authenticate } = require('../middleware/authenticate');
 const { HallCreateSchema, HallUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
-  // GET - List all halls (protected)
-  router.get('/', authenticate, async (req, res) => {
+  // GET - List all halls (public)
+  router.get('/', async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized: missing or invalid token' });
-
       if (pgClient) {
         const { rows } = await pgClient.query('SELECT * FROM halls ORDER BY created_at DESC');
         return res.json(rows);

@@ -12,8 +12,13 @@ const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showAddedMessage, setShowAddedMessage] = useState({});
+  const [menuItems, setMenuItems] = useState([]);
+  const [halls, setHalls] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
 
+  // Placeholder slides (these don't change)
   const slides = [
     {
       image: getImagePath('home1.jfif'),
@@ -59,7 +64,8 @@ const Home = () => {
     }
   ];
 
-  const menuItems = [
+  // Fallback data for when API is unavailable
+  const fallbackMenuItems = [
     {
       id: 'nyama-choma',
       name: 'Nyama Choma',
@@ -90,7 +96,7 @@ const Home = () => {
     }
   ];
 
-  const halls = [
+  const fallbackHalls = [
     {
       id: 'banquet',
       name: 'Banquet Hall',
@@ -111,7 +117,7 @@ const Home = () => {
     }
   ];
 
-  const rooms = [
+  const fallbackRooms = [
     {
       id: 'standard',
       name: 'Standard Room',
@@ -134,6 +140,57 @@ const Home = () => {
       image: getImagePath('Executive Suite.webp')
     }
   ];
+
+  // Fetch data from API on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch from API with auth header
+        const token = localStorage.getItem('adminToken') || '';
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+
+        // Fetch menu items
+        const menuRes = await fetch('/api/menu', { headers });
+        if (menuRes.ok) {
+          const menuData = await menuRes.json();
+          setMenuItems(Array.isArray(menuData) ? menuData : menuData.data || fallbackMenuItems);
+        } else {
+          setMenuItems(fallbackMenuItems);
+        }
+
+        // Fetch halls (without auth for public view)
+        const hallsRes = await fetch('/api/halls', { headers });
+        if (hallsRes.ok) {
+          const hallsData = await hallsRes.json();
+          setHalls(Array.isArray(hallsData) ? hallsData : hallsData.data || fallbackHalls);
+        } else {
+          setHalls(fallbackHalls);
+        }
+
+        // Fetch rooms (without auth for public view)
+        const roomsRes = await fetch('/api/rooms', { headers });
+        if (roomsRes.ok) {
+          const roomsData = await roomsRes.json();
+          setRooms(Array.isArray(roomsData) ? roomsData : roomsData.data || fallbackRooms);
+        } else {
+          setRooms(fallbackRooms);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch data from API, using fallback data:', error);
+        setMenuItems(fallbackMenuItems);
+        setHalls(fallbackHalls);
+        setRooms(fallbackRooms);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Carousel auto-advance
   useEffect(() => {

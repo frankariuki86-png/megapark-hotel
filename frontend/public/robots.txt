@@ -1,0 +1,36 @@
+# Robots.txt for Megapark Resort
+# This file helps search engines understand how to crawl the website
+
+# Default rules for all robots
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /.env
+Disallow: /node_modules/
+Disallow: /dist/
+Disallow: /build/
+
+# Specific rules for Googlebot
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Crawl-delay: 1
+
+# Specific rules for Bingbot
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Block bad bots
+User-agent: BadBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+# Sitemap location
+Sitemap: https://megapark-hotel.com/sitemap.xml
+Sitemap: https://megapark-hotel.com/megapark-hotel/sitemap.xml

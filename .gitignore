@@ -1,4 +1,18 @@
+# ============================================
+# CRITICAL: Environment Variables
+# ============================================
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+frontend/.env
+frontend/.env.local
+src/.env
+
+# ============================================
 # Logs
+# ============================================
 logs
 *.log
 npm-debug.log*
@@ -7,18 +21,70 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ============================================
+# Dependencies
+# ============================================
 node_modules
+node_modules/
+*/node_modules
+*/*/node_modules
+
+# ============================================
+# Build Outputs
+# ============================================
 dist
 dist-ssr
+build
+*/dist
+*/build
 *.local
 
-# Editor directories and files
+# ============================================
+# IDE & Editor
+# ============================================
 .vscode/*
 !.vscode/extensions.json
 .idea
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# ============================================
+# OS Files
+# ============================================
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================================
+# Testing & Coverage
+# ============================================
+coverage
+.nyc_output
+*.lcov
+.mocha-webpack
+
+# ============================================
+# Development
+# ============================================
+*.tmp
+*.temp
+.next
+.nuxt
+.cache
+.vuepress/dist
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.vscode-test
+.yarn/cache
+.yarn/unplugged

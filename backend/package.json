@@ -13,6 +13,7 @@
     "db:setup": "npm run migrate && npm run seed"
   },
   "dependencies": {
+    "@sentry/node": "^10.39.0",
     "@vitest/ui": "^4.0.18",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.6",
