@@ -11,11 +11,12 @@ const MenuManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    category: 'main',
+    category: 'mains',
     price: 0,
     image: '',
     preparationTime: 20
   });
+  const [imageFile, setImageFile] = useState(null);
 
   useEffect(() => {
     fetchItems();
@@ -38,11 +39,12 @@ const MenuManagement = () => {
     setFormData({
       name: '',
       description: '',
-      category: 'main',
+      category: 'mains',
       price: 0,
       image: '',
       preparationTime: 20
     });
+    setImageFile(null);
     setEditingId(null);
     setShowForm(true);
   };
@@ -127,10 +129,11 @@ const MenuManagement = () => {
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
                 required
               >
-                <option value="main">Main Course</option>
-                <option value="appetizer">Appetizer</option>
-                <option value="dessert">Dessert</option>
-                <option value="drink">Drink</option>
+                <option value="mains">Main Course</option>
+                <option value="appetizers">Appetizer</option>
+                <option value="desserts">Dessert</option>
+                <option value="drinks">Drink</option>
+                <option value="sides">Sides</option>
               </select>
             </div>
 
@@ -155,13 +158,28 @@ const MenuManagement = () => {
           </div>
 
           <div className="form-group">
-            <label>Image URL</label>
-            <input
-              type="text"
-              value={formData.image}
-              onChange={(e) => setFormData({...formData, image: e.target.value})}
-              placeholder="https://..."
-            />
+            <label>Image</label>
+            <div style={{display: 'flex', gap: '10px', alignItems: 'flex-start'}}>
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setImageFile(file);
+                      const reader = new FileReader();
+                      reader.onload = () => setFormData({...formData, image: reader.result});
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {imageFile && <p style={{fontSize: '12px'}}>{imageFile.name}</p>}
+              </div>
+              {formData.image && (
+                <img src={formData.image} alt="preview" style={{width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px'}} />
+              )}
+            </div>
           </div>
 
           <div className="form-actions">

@@ -11,14 +11,13 @@ const HallsManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    hallType: 'banquet',
     capacity: 100,
-    area: '',
-    basePrice: 0,
+    pricePerDay: 0,
     images: [],
     availability: true,
-    packages: []
+    amenities: []
   });
+  const [imageFiles, setImageFiles] = useState([]);
 
   useEffect(() => {
     fetchHalls();
@@ -41,14 +40,13 @@ const HallsManagement = () => {
     setFormData({
       name: '',
       description: '',
-      hallType: 'banquet',
       capacity: 100,
-      area: '',
-      basePrice: 0,
+      pricePerDay: 0,
       images: [],
       availability: true,
-      packages: []
+      amenities: []
     });
+    setImageFiles([]);
     setEditingId(null);
     setShowForm(true);
   };
@@ -57,8 +55,9 @@ const HallsManagement = () => {
     setFormData({
       ...hall,
       capacity: Number(hall.capacity) || 100,
-      basePrice: Number(hall.basePrice) || 0
+      pricePerDay: Number(hall.pricePerDay) || 0
     });
+    setImageFiles([]);
     setEditingId(hall.id);
     setShowForm(true);
   };
@@ -106,28 +105,14 @@ const HallsManagement = () => {
         <form className="admin-form" onSubmit={handleSubmit}>
           <h3>{editingId ? 'Edit' : 'Create'} Hall</h3>
           
-          <div className="form-row">
-            <div className="form-group">
-              <label>Hall Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Hall Type *</label>
-              <select
-                value={formData.hallType}
-                onChange={(e) => setFormData({...formData, hallType: e.target.value})}
-              >
-                <option value="banquet">Banquet Hall</option>
-                <option value="conference">Conference Room</option>
-                <option value="pavilion">Pavilion</option>
-              </select>
-            </div>
+          <div className="form-group">
+            <label>Hall Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              required
+            />
           </div>
 
           <div className="form-group">
@@ -152,23 +137,43 @@ const HallsManagement = () => {
             </div>
 
             <div className="form-group">
-              <label>Area (sq meters)</label>
-              <input
-                type="text"
-                value={formData.area}
-                onChange={(e) => setFormData({...formData, area: e.target.value})}
-                placeholder="e.g., 450 sq meters"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Base Price (KES) *</label>
+              <label>Price Per Day (KES) *</label>
               <input
                 type="number"
-                value={formData.basePrice || 0}
-                onChange={(e) => setFormData({...formData, basePrice: parseFloat(e.target.value) || 0})}
+                value={formData.pricePerDay || 0}
+                onChange={(e) => setFormData({...formData, pricePerDay: parseFloat(e.target.value) || 0})}
                 required
               />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Hall Photos (up to 5)</label>
+            <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-start'}}>
+              <div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 5);
+                    setImageFiles(files);
+                    Promise.all(files.map(file => {
+                      return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(file);
+                      });
+                    })).then(images => {
+                      setFormData({...formData, images});
+                    });
+                  }}
+                />
+                {imageFiles.length > 0 && <p style={{fontSize: '12px'}}>{imageFiles.length} file(s) selected</p>}
+              </div>
+              {formData.images && formData.images.map((img, idx) => (
+                <img key={idx} src={img} alt={`preview-${idx}`} style={{width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px'}} />
+              ))}
             </div>
           </div>
 
@@ -197,8 +202,8 @@ const HallsManagement = () => {
               <th>Name</th>
               <th>Type</th>
               <th>Capacity</th>
-              <th>Area</th>
-              <th>Base Price (KES)</th>
+              <th>Amenities</th>
+              <th>Price/Day (KES)</th>
               <th>Available</th>
               <th>Actions</th>
             </tr>
@@ -207,10 +212,10 @@ const HallsManagement = () => {
             {halls.map(hall => (
               <tr key={hall.id}>
                 <td>{hall.name}</td>
-                <td>{hall.hallType}</td>
+                <td>Hall</td>
                 <td>{hall.capacity} people</td>
-                <td>{hall.area}</td>
-                <td>KES {(hall.basePrice || 0).toLocaleString()}</td>
+                <td>{hall.amenities && hall.amenities.length > 0 ? hall.amenities.length : '0'}</td>
+                <td>KES {(hall.pricePerDay || 0).toLocaleString()}</td>
                 <td>{hall.availability ? '✅' : '❌'}</td>
                 <td className="actions">
                   <button className="btn-small btn-edit" onClick={() => handleEdit(hall)}>Edit</button>

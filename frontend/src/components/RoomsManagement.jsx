@@ -19,6 +19,7 @@ const RoomsManagement = () => {
     images: [],
     availability: true
   });
+  const [imageFiles, setImageFiles] = useState([]);
 
   useEffect(() => {
     fetchRooms();
@@ -49,6 +50,7 @@ const RoomsManagement = () => {
       images: [],
       availability: true
     });
+    setImageFiles([]);
     setEditingId(null);
     setShowForm(true);
   };
@@ -59,6 +61,7 @@ const RoomsManagement = () => {
       pricePerNight: Number(room.pricePerNight) || 0,
       capacity: Number(room.capacity) || 1
     });
+    setImageFiles([]);
     setEditingId(room.id);
     setShowForm(true);
   };
@@ -179,6 +182,36 @@ const RoomsManagement = () => {
                 />
                 Available
               </label>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Room Photos (up to 5)</label>
+            <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-start'}}>
+              <div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 5);
+                    setImageFiles(files);
+                    Promise.all(files.map(file => {
+                      return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(file);
+                      });
+                    })).then(images => {
+                      setFormData({...formData, images});
+                    });
+                  }}
+                />
+                {imageFiles.length > 0 && <p style={{fontSize: '12px'}}>{imageFiles.length} file(s) selected</p>}
+              </div>
+              {formData.images && formData.images.map((img, idx) => (
+                <img key={idx} src={img} alt={`preview-${idx}`} style={{width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px'}} />
+              ))}
             </div>
           </div>
 

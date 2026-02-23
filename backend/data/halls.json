@@ -1,5 +1,19 @@
 [
   {
+    "id": "hall-1771850586929",
+    "name": "Grand Ballroom",
+    "description": "Spacious hall for weddings",
+    "capacity": 500,
+    "pricePerDay": 50000,
+    "images": [],
+    "amenities": [
+      "AC",
+      "WiFi"
+    ],
+    "availability": true,
+    "createdAt": "2026-02-23T12:43:06.929Z"
+  },
+  {
     "id": "hall-001",
     "name": "Grand Ballroom",
     "description": "Spacious hall perfect for weddings, conferences, and large events with elegant decor and modern facilities",
