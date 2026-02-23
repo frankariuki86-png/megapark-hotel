@@ -9,6 +9,7 @@ backend/.env.local
 frontend/.env
 frontend/.env.local
 src/.env
+backend/.env.render.template
 
 # ============================================
 # Logs
