@@ -7,7 +7,7 @@ services:
     plan: free
     repo: .
     branch: main
-    buildCommand: bash -c 'npm --prefix frontend ci && npm --prefix frontend run build && npm --prefix backend ci'
+    buildCommand: bash -c 'npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install'
     startCommand: node backend/index.js
     autoDeploy: true
     envVars:
