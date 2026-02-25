@@ -4,6 +4,12 @@ const { authenticate } = require('../middleware/authenticate');
 const { MenuItemCreateSchema, MenuItemUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
+  // Test endpoint to verify router is mounted
+  router.get('/test', (req, res) => {
+    logger.info('GET /api/menu/test - Router is mounted and working!');
+    return res.json({ status: 'ok', message: 'Menu router is mounted successfully' });
+  });
+
   // GET - List all menu items (public)
   router.get('/', async (req, res) => {
     try {

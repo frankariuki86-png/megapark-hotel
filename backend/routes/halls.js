@@ -4,6 +4,12 @@ const { authenticate } = require('../middleware/authenticate');
 const { HallCreateSchema, HallUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
+  // Test endpoint to verify router is mounted
+  router.get('/test', (req, res) => {
+    logger.info('GET /api/halls/test - Router is mounted and working!');
+    return res.json({ status: 'ok', message: 'Halls router is mounted successfully' });
+  });
+
   // GET - List all halls (public)
   router.get('/', async (req, res) => {
     try {
