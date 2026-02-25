@@ -95,24 +95,112 @@ const readJSON = (p, fallback) => {
 const writeJSON = (p, data) => { fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
 
 // Routes
-const authRouter = require('./routes/auth')({ logger, pgClient });
-const menuRouter = require('./routes/menu')({ pgClient, readJSON, writeJSON, menuPath, logger });
-const ordersRouter = require('./routes/orders')({ pgClient, readJSON, writeJSON, ordersPath, logger });
+// Routes - with error handling
+let authRouter, menuRouter, ordersRouter, paymentsRouter, adminUsersRouter, hallsRouter, roomsRouter, hallQuoteRouter;
+
+try {
+  logger.info('Initializing auth router...');
+  authRouter = require('./routes/auth')({ logger, pgClient });
+  logger.info('✓ Auth router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize auth router:', e.message);
+  throw e;
+}
+
+try {
+  logger.info('Initializing menu router...');
+  menuRouter = require('./routes/menu')({ pgClient, readJSON, writeJSON, menuPath, logger });
+  logger.info('✓ Menu router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize menu router:', e.message);
+  throw e;
+}
+
+try {
+  logger.info('Initializing orders router...');
+  ordersRouter = require('./routes/orders')({ pgClient, readJSON, writeJSON, ordersPath, logger });
+  logger.info('✓ Orders router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize orders router:', e.message);
+  throw e;
+}
+
 const bookingsPath = path.join(dataDir, 'bookings.json');
 if (!fs.existsSync(bookingsPath)) fs.writeFileSync(bookingsPath, JSON.stringify([], null, 2));
-const paymentsRouter = require('./routes/payments')({ logger, readJSON, writeJSON, bookingsPath, pgClient });
+
+try {
+  logger.info('Initializing payments router...');
+  paymentsRouter = require('./routes/payments')({ logger, readJSON, writeJSON, bookingsPath, pgClient });
+  logger.info('✓ Payments router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize payments router:', e.message);
+  throw e;
+}
+
 const adminUsersPath = path.join(dataDir, 'admin-users.json');
-const adminUsersRouter = require('./routes/admin-users')({ pgClient, readJSON, writeJSON, adminUsersPath, logger });
+
+try {
+  logger.info('Initializing admin users router...');
+  adminUsersRouter = require('./routes/admin-users')({ pgClient, readJSON, writeJSON, adminUsersPath, logger });
+  logger.info('✓ Admin users router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize admin users router:', e.message);
+  throw e;
+}
 
 // Halls and Rooms routes
 const hallsPath = path.join(dataDir, 'halls.json');
 if (!fs.existsSync(hallsPath)) fs.writeFileSync(hallsPath, JSON.stringify([], null, 2));
-const hallsRouter = require('./routes/halls')({ pgClient, readJSON, writeJSON, hallsPath, logger });
+
+try {
+  logger.info('Initializing halls router...');
+  hallsRouter = require('./routes/halls')({ pgClient, readJSON, writeJSON, hallsPath, logger });
+  logger.info('✓ Halls router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize halls router:', e.message);
+  throw e;
+}
 
 const roomsPath = path.join(dataDir, 'rooms.json');
 if (!fs.existsSync(roomsPath)) fs.writeFileSync(roomsPath, JSON.stringify([], null, 2));
-const roomsRouter = require('./routes/rooms')({ pgClient, readJSON, writeJSON, roomsPath, logger });
-const hallQuoteRouter = require('./routes/hall-quote')({ logger });
+
+try {
+  logger.info('Initializing rooms router...');
+  roomsRouter = require('./routes/rooms')({ pgClient, readJSON, writeJSON, roomsPath, logger });
+  logger.info('✓ Rooms router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize rooms router:', e.message);
+  throw e;
+}
+
+try {
+  logger.info('Initializing hall quote router...');
+  hallQuoteRouter = require('./routes/hall-quote')({ logger });
+  logger.info('✓ Hall quote router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize hall quote router:', e.message);
+  throw e;
+}
+
+// Validate routers before mounting
+const validateRouter = (name, router) => {
+  if (!router) {
+    throw new Error(`${name} is undefined or null`);
+  }
+  if (typeof router !== 'function' && !router._router) {
+    throw new Error(`${name} is not a valid Express router`);
+  }
+  logger.info(`✓ ${name} validation passed`);
+};
+
+validateRouter('authRouter', authRouter);
+validateRouter('menuRouter', menuRouter);
+validateRouter('hallsRouter', hallsRouter);
+validateRouter('roomsRouter', roomsRouter);
+validateRouter('hallQuoteRouter', hallQuoteRouter);
+validateRouter('ordersRouter', ordersRouter);
+validateRouter('paymentsRouter', paymentsRouter);
+validateRouter('adminUsersRouter', adminUsersRouter);
 
 // Apply rate limiting to auth endpoints
 app.use('/api/auth/login', authRateLimit);
@@ -126,15 +214,43 @@ app.use('/api/orders', apiRateLimit);
 app.use('/api/payments', apiRateLimit);
 app.use('/api/halls/quote', apiRateLimit);
 
-// Mount routes
-app.use('/api/auth', authRouter);
-app.use('/api/menu', menuRouter);
-app.use('/api/halls', hallsRouter);
-app.use('/api/rooms', roomsRouter);
-app.use('/api/halls/quote', hallQuoteRouter);
-app.use('/api/orders', ordersRouter);
-app.use('/api/payments', paymentsRouter);
-app.use('/api/admin/users', adminUsersRouter);
+// Mount routes with validation
+try {
+  logger.info('Mounting /api/auth router...');
+  app.use('/api/auth', authRouter);
+  logger.info('✓ /api/auth mounted');
+  
+  logger.info('Mounting /api/menu router...');
+  app.use('/api/menu', menuRouter);
+  logger.info('✓ /api/menu mounted');
+  
+  logger.info('Mounting /api/halls router...');
+  app.use('/api/halls', hallsRouter);
+  logger.info('✓ /api/halls mounted');
+  
+  logger.info('Mounting /api/rooms router...');
+  app.use('/api/rooms', roomsRouter);
+  logger.info('✓ /api/rooms mounted');
+  
+  logger.info('Mounting /api/halls/quote router...');
+  app.use('/api/halls/quote', hallQuoteRouter);
+  logger.info('✓ /api/halls/quote mounted');
+  
+  logger.info('Mounting /api/orders router...');
+  app.use('/api/orders', ordersRouter);
+  logger.info('✓ /api/orders mounted');
+  
+  logger.info('Mounting /api/payments router...');
+  app.use('/api/payments', paymentsRouter);
+  logger.info('✓ /api/payments mounted');
+  
+  logger.info('Mounting /api/admin/users router...');
+  app.use('/api/admin/users', adminUsersRouter);
+  logger.info('✓ /api/admin/users mounted');
+} catch (e) {
+  logger.error('✗ Error mounting routes:', e.message);
+  throw e;
+}
 
 logger.info('✓ All API routes mounted successfully');
 logger.info('✓ Available routes: /api/auth, /api/menu, /api/halls, /api/rooms, /api/orders, /api/payments, /api/admin/users');
