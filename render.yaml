@@ -1,4 +1,4 @@
-# Render service manifest for Megapark backend
+# Render service manifest for Megapark Hotel Full-Stack App
 services:
   - type: web
     name: megapark-backend
@@ -7,10 +7,9 @@ services:
     plan: free
     repo: .
     branch: main
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: bash -c 'cd frontend && npm install && npm run build && cd ../backend && npm install'
+    startCommand: node backend/index.js
     autoDeploy: true
-    root: backend
     envVars:
       - key: NODE_ENV
         value: production

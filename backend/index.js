@@ -144,6 +144,18 @@ app.use('/api/admin/users', adminUsersRouter);
  */
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+// Serve frontend static files
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  // Fallback to index.html for SPA routing
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  logger.warn('Frontend dist folder not found - frontend will not be served');
+}
+
 // Global error handler (must be last)
 app.use(errorHandler);
 
