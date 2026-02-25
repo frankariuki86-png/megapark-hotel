@@ -265,7 +265,20 @@ logger.info('✓ Available routes: /api/auth, /api/menu, /api/halls, /api/rooms,
  *       200:
  *         description: Server is healthy
  */
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => {
+  logger.info('Health check requested');
+  res.json({ ok: true, timestamp: new Date().toISOString(), message: 'Backend is healthy' });
+});
+
+// Comprehensive route info endpoint
+app.get('/api/routes-info', (req, res) => {
+  logger.info('Routes info requested');
+  res.json({
+    message: 'Available API routes',
+    routes: ['/api/auth', '/api/menu', '/api/halls', '/api/rooms', '/api/orders', '/api/payments', '/api/admin/users'],
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
