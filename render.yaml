@@ -13,10 +13,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: '3000'
       - key: PGSSLMODE
         value: require
+      # PORT should not be hardcoded; Render provides the correct port via the PORT environment variable
+
 
 databases:
   - name: megapark-db

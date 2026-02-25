@@ -23,6 +23,9 @@ const { swaggerUi, specs } = require('./config/swagger');
 
 const app = express();
 
+// Log the port Render (or environment) assigns so we can verify
+logger.info(`Environment PORT variable: ${process.env.PORT}`);
+
 // Security middleware
 app.use(securityHeaders);
 app.use(corsConfig);
