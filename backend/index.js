@@ -269,11 +269,38 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
+const backendDir = __dirname;
+const parentDir = path.join(__dirname, '..');
+
+logger.info('Backend directory:', backendDir);
+logger.info('Parent directory:', parentDir);
 logger.info('Looking for frontend dist at:', frontendDist);
 logger.info('Frontend dist exists:', fs.existsSync(frontendDist));
 
+// List what's in the parent directory for debugging
+try {
+  const parentContents = fs.readdirSync(parentDir);
+  logger.info('Parent directory contents:', parentContents);
+  
+  if (fs.existsSync(path.join(parentDir, 'frontend'))) {
+    const frontendContents = fs.readdirSync(path.join(parentDir, 'frontend'));
+    logger.info('Frontend directory contents:', frontendContents);
+  }
+} catch (e) {
+  logger.warn('Error reading directories:', e.message);
+}
+
 if (fs.existsSync(frontendDist)) {
   logger.info('✓ Serving frontend from', frontendDist);
+  
+  // List files in dist for debugging
+  try {
+    const distContents = fs.readdirSync(frontendDist);
+    logger.info('Frontend dist contents:', distContents);
+  } catch (e) {
+    logger.warn('Error reading dist contents:', e.message);
+  }
+  
   // Serve static assets (CSS, JS, images, etc.)
   app.use(express.static(frontendDist, {
     maxAge: '1h',
@@ -288,11 +315,33 @@ if (fs.existsSync(frontendDist)) {
       return next();
     }
     // For all other routes, serve index.html (SPA routing)
+    logger.info('SPA fallback: serving index.html for path:', req.path);
     return res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
-  logger.warn('⚠ Frontend dist folder not found at', frontendDist);
-  logger.warn('Frontend will not be served');
+  logger.error('❌ Frontend dist folder NOT found at', frontendDist);
+  logger.error('The frontend build may have failed during deployment');
+  logger.error('Expected path:', frontendDist);
+  
+  // Fallback: serve a helpful error page
+  app.use((req, res) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.status(503).send(`
+      <html>
+        <head><title>Frontend Not Built</title></head>
+        <body style="font-family: monospace; padding: 50px;">
+          <h1>⚠️ Frontend Not Available</h1>
+          <p>The frontend build was not found at: ${frontendDist}</p>
+          <p>Check Render logs to see if the build command failed.</p>
+          <hr />
+          <p>Expected build command: npm --prefix frontend run build</p>
+          <p>Expected output: frontend/dist/</p>
+        </body>
+      </html>
+    `);
+  });
 }
 
 // 404 handler for API routes that don't exist
