@@ -23,7 +23,7 @@ function App() {
         <CartProvider>
           <UserProvider>
             <AdminProvider>
-              <Router basename="/megapark-hotel">
+              <Router basename="/">
                 <Routes>
                   <Route path="/admin/login" element={
                     <>

@@ -148,8 +148,11 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 const frontendDist = path.join(__dirname, '../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
-  // Fallback to index.html for SPA routing
-  app.get('*', (req, res) => {
+  // SPA fallback - only for non-API routes
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+  app.get(/^(?!\/api\/).*/, (req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
