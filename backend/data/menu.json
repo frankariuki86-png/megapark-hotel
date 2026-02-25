@@ -1,5 +1,14 @@
 [
   {
+    "id": "menu-1772053600807",
+    "name": "Chapati Test",
+    "description": "test",
+    "category": "sides",
+    "price": 150,
+    "preparationTime": 15,
+    "createdAt": "2026-02-25T21:06:40.807Z"
+  },
+  {
     "id": "menu-1771851391042",
     "name": "ugyuyu",
     "description": "tytyryrtyrt",
