@@ -79,12 +79,16 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 const menuPath = path.join(dataDir, 'menu.json');
 const ordersPath = path.join(dataDir, 'orders.json');
 
+logger.info('Data directory initialized:', dataDir);
+
 const readJSON = (p, fallback) => {
   try {
-    if (!fs.existsSync(p)) { fs.writeFileSync(p, JSON.stringify(fallback || [], null, 2)); }
+    if (!fs.existsSync(p)) { 
+      fs.writeFileSync(p, JSON.stringify(fallback || [], null, 2)); 
+    }
     return JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch (e) {
-    logger.warn('readJSON error', e.message);
+    logger.warn('readJSON error for', p, e.message);
     return fallback || [];
   }
 }
@@ -132,6 +136,9 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/admin/users', adminUsersRouter);
 
+logger.info('✓ All API routes mounted successfully');
+logger.info('✓ Available routes: /api/auth, /api/menu, /api/halls, /api/rooms, /api/orders, /api/payments, /api/admin/users');
+
 /**
  * @swagger
  * /api/health:
@@ -146,18 +153,47 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
+logger.info('Looking for frontend dist at:', frontendDist);
+logger.info('Frontend dist exists:', fs.existsSync(frontendDist));
+
 if (fs.existsSync(frontendDist)) {
-  app.use(express.static(frontendDist));
-  // SPA fallback - only for non-API routes
-  app.get('/', (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
-  });
-  app.get(/^(?!\/api\/).*/, (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
+  logger.info('✓ Serving frontend from', frontendDist);
+  // Serve static assets (CSS, JS, images, etc.)
+  app.use(express.static(frontendDist, {
+    maxAge: '1h',
+    etag: false
+  }));
+  
+  // SPA fallback - serve index.html for non-API routes
+  // This MUST come after all API routes are defined
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      // Let API 404 handler take over
+      return next();
+    }
+    // For all other routes, serve index.html (SPA routing)
+    return res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
-  logger.warn('Frontend dist folder not found - frontend will not be served');
+  logger.warn('⚠ Frontend dist folder not found at', frontendDist);
+  logger.warn('Frontend will not be served');
 }
+
+// 404 handler for API routes that don't exist
+app.use('/api', (req, res) => {
+  logger.warn('API route not found', { method: req.method, path: req.path });
+  res.status(404).json({ 
+    error: 'Not Found',
+    path: req.path,
+    method: req.method,
+    message: 'This API route does not exist'
+  });
+});
+
+// Catch-all 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found', path: req.path });
+});
 
 // Global error handler (must be last)
 app.use(errorHandler);
