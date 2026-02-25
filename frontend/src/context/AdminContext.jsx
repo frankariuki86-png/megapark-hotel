@@ -266,35 +266,65 @@ export const AdminProvider = ({ children }) => {
     let mounted = true;
     (async () => {
       try {
+        console.log('[AdminContext] Initializing - fetching menu items...');
         const remoteMenu = await fetchMenuItems();
+        console.log('[AdminContext] Menu fetch result:', remoteMenu);
         if (mounted) {
-          if (remoteMenu && remoteMenu.length > 0) setMenuItems(remoteMenu);
-          else await saveMenuItems(menuItems);
+          if (remoteMenu && remoteMenu.length > 0) {
+            console.log('[AdminContext] Setting menu from remote:', remoteMenu.length, 'items');
+            setMenuItems(remoteMenu);
+          } else {
+            console.log('[AdminContext] Remote menu empty, seeding with defaults');
+            await saveMenuItems(menuItems);
+          }
         }
+        
         // Fetch halls and rooms
         try {
+          console.log('[AdminContext] Fetching halls...');
           const remoteHalls = await fetchHalls();
-          if (mounted && remoteHalls && remoteHalls.length > 0) setHalls(remoteHalls);
+          console.log('[AdminContext] Halls fetch result:', remoteHalls);
+          if (mounted && remoteHalls && remoteHalls.length > 0) {
+            console.log('[AdminContext] Setting halls from remote:', remoteHalls.length, 'halls');
+            setHalls(remoteHalls);
+          }
         } catch (e) {
-          // ignore halls fetch errors
+          console.warn('[AdminContext] Halls fetch error (non-fatal):', e.message);
         }
+        
         try {
+          console.log('[AdminContext] Fetching rooms...');
           const remoteRooms = await fetchRooms();
-          if (mounted && remoteRooms && remoteRooms.length > 0) setRooms(remoteRooms);
+          console.log('[AdminContext] Rooms fetch result:', remoteRooms);
+          if (mounted && remoteRooms && remoteRooms.length > 0) {
+            console.log('[AdminContext] Setting rooms from remote:', remoteRooms.length, 'rooms');
+            setRooms(remoteRooms);
+          }
         } catch (e) {
-          // ignore rooms fetch errors
+          console.warn('[AdminContext] Rooms fetch error (non-fatal):', e.message);
         }
+        
         // Only fetch orders if user is logged in (has adminUser)
         if (adminUser) {
-          const remoteOrders = await fetchOrders();
-          if (mounted) {
-            if (remoteOrders && remoteOrders.length > 0) setFoodOrders(remoteOrders);
-            else await saveOrders(foodOrders);
+          try {
+            console.log('[AdminContext] Fetching orders for logged-in user...');
+            const remoteOrders = await fetchOrders();
+            console.log('[AdminContext] Orders fetch result:', remoteOrders);
+            if (mounted) {
+              if (remoteOrders && remoteOrders.length > 0) {
+                console.log('[AdminContext] Setting orders from remote:', remoteOrders.length, 'orders');
+                setFoodOrders(remoteOrders);
+              } else {
+                console.log('[AdminContext] Remote orders empty, seeding with defaults');
+                await saveOrders(foodOrders);
+              }
+            }
+          } catch (e) {
+            console.warn('[AdminContext] Orders fetch error:', e.message);
           }
         }
       } catch (err) {
-        // don't block app on mock api failures
-        // console.warn('mockApi init failed', err);
+        console.error('[AdminContext] Critical initialization error:', err.message, err);
       }
     })();
     return () => { mounted = false };
@@ -303,7 +333,9 @@ export const AdminProvider = ({ children }) => {
   // Real backend login via API
   const adminLogin = useCallback(async (email, password) => {
     try {
+      console.log('[AdminContext] Attempting login with:', email);
       const result = await loginAdmin(email, password);
+      console.log('[AdminContext] Login result:', result);
       const user = result.user || {
         id: result.id || 'admin-001',
         email: result.email || email,
@@ -311,10 +343,12 @@ export const AdminProvider = ({ children }) => {
         role: result.role || 'admin',
         loginTime: new Date().toISOString()
       };
+      console.log('[AdminContext] Setting admin user:', user);
       setAdminUser(user);
       localStorage.setItem('adminUser', JSON.stringify(user));
       return { success: true, user };
     } catch (err) {
+      console.error('[AdminContext] Login error:', err.message);
       return { success: false, error: err.message || 'Login failed' };
     }
   }, []);
@@ -394,20 +428,41 @@ export const AdminProvider = ({ children }) => {
 
   // Menu Item Management
   const addMenuItem = useCallback(async (menuItem) => {
-    const created = await createMenuItem(menuItem);
-    setMenuItems(prev => [created, ...prev]);
-    return created;
+    try {
+      console.log('[AdminContext] Creating menu item:', menuItem);
+      const created = await createMenuItem(menuItem);
+      console.log('[AdminContext] Menu item created:', created);
+      setMenuItems(prev => [created, ...prev]);
+      return created;
+    } catch (err) {
+      console.error('[AdminContext] Error creating menu item:', err.message);
+      throw err;
+    }
   }, []);
 
   const updateMenuItem = useCallback(async (itemId, updates) => {
-    const updated = await updateMenuItemApi(itemId, updates);
-    setMenuItems(prev => prev.map(item => item.id === itemId ? updated : item));
-    return updated;
+    try {
+      console.log('[AdminContext] Updating menu item:', itemId, updates);
+      const updated = await updateMenuItemApi(itemId, updates);
+      console.log('[AdminContext] Menu item updated:', updated);
+      setMenuItems(prev => prev.map(item => item.id === itemId ? updated : item));
+      return updated;
+    } catch (err) {
+      console.error('[AdminContext] Error updating menu item:', err.message);
+      throw err;
+    }
   }, []);
 
   const deleteMenuItem = useCallback(async (itemId) => {
-    await deleteMenuItemApi(itemId);
-    setMenuItems(prev => prev.filter(item => item.id !== itemId));
+    try {
+      console.log('[AdminContext] Deleting menu item:', itemId);
+      await deleteMenuItemApi(itemId);
+      console.log('[AdminContext] Menu item deleted');
+      setMenuItems(prev => prev.filter(item => item.id !== itemId));
+    } catch (err) {
+      console.error('[AdminContext] Error deleting menu item:', err.message);
+      throw err;
+    }
   }, []);
 
   const updateMenuItemPrice = useCallback(async (itemId, newPrice) => {
@@ -443,20 +498,41 @@ export const AdminProvider = ({ children }) => {
 
   // Hall Management
   const addHall = useCallback(async (hall) => {
-    const created = await createHall(hall);
-    setHalls(prev => [created, ...prev]);
-    return created;
+    try {
+      console.log('[AdminContext] Creating hall:', hall);
+      const created = await createHall(hall);
+      console.log('[AdminContext] Hall created:', created);
+      setHalls(prev => [created, ...prev]);
+      return created;
+    } catch (err) {
+      console.error('[AdminContext] Error creating hall:', err.message);
+      throw err;
+    }
   }, []);
 
   const updateHall = useCallback(async (hallId, updates) => {
-    const updated = await updateHallApi(hallId, updates);
-    setHalls(prev => prev.map(h => h.id === hallId ? updated : h));
-    return updated;
+    try {
+      console.log('[AdminContext] Updating hall:', hallId, updates);
+      const updated = await updateHallApi(hallId, updates);
+      console.log('[AdminContext] Hall updated:', updated);
+      setHalls(prev => prev.map(h => h.id === hallId ? updated : h));
+      return updated;
+    } catch (err) {
+      console.error('[AdminContext] Error updating hall:', err.message);
+      throw err;
+    }
   }, []);
 
   const deleteHall = useCallback(async (hallId) => {
-    await deleteHallApi(hallId);
-    setHalls(prev => prev.filter(h => h.id !== hallId));
+    try {
+      console.log('[AdminContext] Deleting hall:', hallId);
+      await deleteHallApi(hallId);
+      console.log('[AdminContext] Hall deleted');
+      setHalls(prev => prev.filter(h => h.id !== hallId));
+    } catch (err) {
+      console.error('[AdminContext] Error deleting hall:', err.message);
+      throw err;
+    }
   }, []);
 
   const toggleHallAvailability = useCallback(async (hallId) => {
@@ -472,20 +548,41 @@ export const AdminProvider = ({ children }) => {
 
   // Room Management (for admin)
   const addRoom = useCallback(async (room) => {
-    const created = await createRoom(room);
-    setRooms(prev => [created, ...prev]);
-    return created;
+    try {
+      console.log('[AdminContext] Creating room:', room);
+      const created = await createRoom(room);
+      console.log('[AdminContext] Room created:', created);
+      setRooms(prev => [created, ...prev]);
+      return created;
+    } catch (err) {
+      console.error('[AdminContext] Error creating room:', err.message);
+      throw err;
+    }
   }, []);
 
   const updateRoomAdmin = useCallback(async (roomId, updates) => {
-    const updated = await updateRoomApi(roomId, updates);
-    setRooms(prev => prev.map(r => r.id === roomId ? updated : r));
-    return updated;
+    try {
+      console.log('[AdminContext] Updating room:', roomId, updates);
+      const updated = await updateRoomApi(roomId, updates);
+      console.log('[AdminContext] Room updated:', updated);
+      setRooms(prev => prev.map(r => r.id === roomId ? updated : r));
+      return updated;
+    } catch (err) {
+      console.error('[AdminContext] Error updating room:', err.message);
+      throw err;
+    }
   }, []);
 
   const deleteRoom = useCallback(async (roomId) => {
-    await deleteRoomApi(roomId);
-    setRooms(prev => prev.filter(r => r.id !== roomId));
+    try {
+      console.log('[AdminContext] Deleting room:', roomId);
+      await deleteRoomApi(roomId);
+      console.log('[AdminContext] Room deleted');
+      setRooms(prev => prev.filter(r => r.id !== roomId));
+    } catch (err) {
+      console.error('[AdminContext] Error deleting room:', err.message);
+      throw err;
+    }
   }, []);
 
   const toggleRoomAvailability = useCallback(async (roomId) => {

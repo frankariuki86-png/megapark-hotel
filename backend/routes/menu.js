@@ -7,11 +7,19 @@ module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
   // GET - List all menu items (public)
   router.get('/', async (req, res) => {
     try {
+      logger.info('GET /api/menu - pgClient available:', !!pgClient);
       if (pgClient) {
-        const { rows } = await pgClient.query('SELECT * FROM menu_items ORDER BY created_at DESC');
-        return res.json(rows);
+        try {
+          const { rows } = await pgClient.query('SELECT * FROM menu_items ORDER BY created_at DESC');
+          logger.info('GET /api/menu - DB query successful, rows:', rows.length);
+          return res.json(rows);
+        } catch (dbErr) {
+          logger.warn('GET /api/menu - DB query failed, falling back to JSON:', dbErr.message);
+          // Fall through to JSON file
+        }
       }
       const items = readJSON(menuPath, []);
+      logger.info('GET /api/menu - Returning', items.length, 'items from JSON file');
       return res.json(items);
     } catch (e) {
       logger.error('GET /api/menu error', e.message);

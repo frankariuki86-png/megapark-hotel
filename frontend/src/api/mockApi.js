@@ -55,11 +55,18 @@ const call = async (method, path, body = null, skipAuth = false) => {
   // Add JWT token if available (except for login endpoint)
   if (path !== '/api/auth/login' && !skipAuth) {
     const token = getToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('[API] Adding auth token to', method, path);
+    } else {
+      console.log('[API] No token available for', method, path);
+    }
   }
   
   const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
+  
+  console.log('[API]', method, url, 'headers:', headers);
   
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Failed to fetch ${path}: Request timeout after ${TIMEOUT}ms`)), TIMEOUT);
@@ -67,7 +74,9 @@ const call = async (method, path, body = null, skipAuth = false) => {
     fetch(url, opts)
       .then(async res => {
         clearTimeout(timer);
+        console.log('[API]', method, path, 'status:', res.status);
         const json = await res.json().catch(() => ({}));
+        console.log('[API]', method, path, 'response:', json);
         if (!res.ok) return reject(new Error(json.error || `HTTP ${res.status}`));
         resolve(json);
       })

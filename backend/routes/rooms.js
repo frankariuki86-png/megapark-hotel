@@ -7,11 +7,18 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   // GET - List all rooms (public)
   router.get('/', async (req, res) => {
     try {
+      logger.info('GET /api/rooms - pgClient available:', !!pgClient);
       if (pgClient) {
-        const { rows } = await pgClient.query('SELECT * FROM rooms ORDER BY created_at DESC');
-        return res.json(rows);
+        try {
+          const { rows } = await pgClient.query('SELECT * FROM rooms ORDER BY created_at DESC');
+          logger.info('GET /api/rooms - DB query successful, rows:', rows.length);
+          return res.json(rows);
+        } catch (dbErr) {
+          logger.warn('GET /api/rooms - DB query failed, falling back to JSON:', dbErr.message);
+        }
       }
       const rooms = readJSON(roomsPath, []);
+      logger.info('GET /api/rooms - Returning', rooms.length, 'rooms from JSON file');
       return res.json(rooms);
     } catch (e) {
       logger.error('GET /api/rooms error', e.message);
