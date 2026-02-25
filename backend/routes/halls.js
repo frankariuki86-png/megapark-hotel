@@ -4,6 +4,8 @@ const { authenticate } = require('../middleware/authenticate');
 const { HallCreateSchema, HallUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
+  logger.info('[hallsRouter] Exported function called');
+  
   // Test endpoint to verify router is mounted
   router.get('/test', (req, res) => {
     logger.info('GET /api/halls/test - Router is mounted and working!');
@@ -13,6 +15,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   // GET - List all halls (public)
   router.get('/', async (req, res) => {
     try {
+      logger.info('[Halls GET /] Endpoint handler called on server');
       logger.info('GET /api/halls - pgClient available:', !!pgClient);
       if (pgClient) {
         try {

@@ -4,6 +4,8 @@ const { authenticate } = require('../middleware/authenticate');
 const { MenuItemCreateSchema, MenuItemUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
+  logger.info('[menuRouter] Exported function called');
+  
   // Test endpoint to verify router is mounted
   router.get('/test', (req, res) => {
     logger.info('GET /api/menu/test - Router is mounted and working!');
@@ -13,6 +15,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
   // GET - List all menu items (public)
   router.get('/', async (req, res) => {
     try {
+      logger.info('[Menu GET /] Endpoint handler called on server');
       logger.info('GET /api/menu - pgClient available:', !!pgClient);
       if (pgClient) {
         try {

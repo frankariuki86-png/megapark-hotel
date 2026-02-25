@@ -4,6 +4,8 @@ const { authenticate } = require('../middleware/authenticate');
 const { RoomCreateSchema, RoomUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
+  logger.info('[roomsRouter] Exported function called');
+  
   // Test endpoint to verify router is mounted
   router.get('/test', (req, res) => {
     logger.info('GET /api/rooms/test - Router is mounted and working!');
@@ -13,6 +15,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   // GET - List all rooms (public)
   router.get('/', async (req, res) => {
     try {
+      logger.info('[Rooms GET /] Endpoint handler called on server');
       logger.info('GET /api/rooms - pgClient available:', !!pgClient);
       if (pgClient) {
         try {
