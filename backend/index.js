@@ -274,31 +274,31 @@ const parentDir = path.join(__dirname, '..');
 
 logger.info('Backend directory:', backendDir);
 logger.info('Parent directory:', parentDir);
-logger.info('Looking for frontend dist at:', frontendDist);
-logger.info('Frontend dist exists:', fs.existsSync(frontendDist));
+logger.info(`Looking for frontend dist at: ${frontendDist}`);
+logger.info(`Frontend dist exists: ${fs.existsSync(frontendDist)}`);
 
 // List what's in the parent directory for debugging
 try {
   const parentContents = fs.readdirSync(parentDir);
-  logger.info('Parent directory contents:', parentContents);
+  logger.info(`Parent directory contents: ${JSON.stringify(parentContents)}`);
   
   if (fs.existsSync(path.join(parentDir, 'frontend'))) {
     const frontendContents = fs.readdirSync(path.join(parentDir, 'frontend'));
-    logger.info('Frontend directory contents:', frontendContents);
+    logger.info(`Frontend directory contents: ${JSON.stringify(frontendContents)}`);
   }
 } catch (e) {
-  logger.warn('Error reading directories:', e.message);
+  logger.warn(`Error reading directories: ${e.message}`);
 }
 
 if (fs.existsSync(frontendDist)) {
-  logger.info('✓ Serving frontend from', frontendDist);
+  logger.info(`✓ Serving frontend from ${frontendDist}`);
   
   // List files in dist for debugging
   try {
     const distContents = fs.readdirSync(frontendDist);
-    logger.info('Frontend dist contents:', distContents);
+    logger.info(`Frontend dist contents: ${JSON.stringify(distContents)}`);
   } catch (e) {
-    logger.warn('Error reading dist contents:', e.message);
+    logger.warn(`Error reading dist contents: ${e.message}`);
   }
   
   // Serve static assets (CSS, JS, images, etc.)
@@ -315,13 +315,13 @@ if (fs.existsSync(frontendDist)) {
       return next();
     }
     // For all other routes, serve index.html (SPA routing)
-    logger.info('SPA fallback: serving index.html for path:', req.path);
+    logger.info(`SPA fallback: serving index.html for path: ${req.path}`);
     return res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
-  logger.error('❌ Frontend dist folder NOT found at', frontendDist);
-  logger.error('The frontend build may have failed during deployment');
-  logger.error('Expected path:', frontendDist);
+  logger.error(`❌ Frontend dist folder NOT found at ${frontendDist}`);
+  logger.error(`The frontend build may have failed during deployment`);
+  logger.error(`Expected path: ${frontendDist}`);
   
   // Fallback: serve a helpful error page
   app.use((req, res) => {
