@@ -53,6 +53,18 @@ main {
   padding-top: 90px;
 }
 
+@media (max-width: 780px) {
+  main {
+    padding-top: 60px;
+  }
+}
+
+@media (max-width: 500px) {
+  main {
+    padding-top: 54px;
+  }
+}
+
 /* Layout helpers */
 .container { 
   max-width: 1500px; 
