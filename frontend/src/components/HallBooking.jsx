@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import HallQuoteModal from './HallQuoteModal';
+import { useNavigate } from 'react-router-dom';
 import '../styles/hallbooking.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
@@ -8,16 +8,15 @@ const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
 const HallBooking = () => {
   const { addBooking } = useCart();
+  const navigate = useNavigate();
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('');
   const [guestCount, setGuestCount] = useState(50);
-  const [selectedHall, setSelectedHall] = useState(null);
-  const [selectedPackage, setSelectedPackage] = useState(null);
   const [addedMessage, setAddedMessage] = useState('');
   const [halls, setHalls] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [pendingBooking, setPendingBooking] = useState(null);
+
+  // Note: we no longer track selectedHall/package locally for modal and moved quote form to separate route
 
   // Fallback halls for when API is unavailable
   const fallbackHalls = [
@@ -153,65 +152,12 @@ const HallBooking = () => {
       image: hall.image,
       area: hall.area
     };
-    // open modal flow (handled below)
-    setSelectedHall(hall);
-    setSelectedPackage(pkg);
-    setShowQuoteModal(true);
+    // navigate to new page with state allowing the user to fill out the quote form
+    navigate('/hall-booking', {
+      state: { hall, pkg, eventDate, eventTime, guestCount }
+    });
   };
 
-  const [showQuoteModal, setShowQuoteModal] = useState(false);
-
-  const handleSendQuote = async ({ contactName, contactPhone, contactEmail, notes }) => {
-    if (!selectedHall || !selectedPackage) return;
-    const payload = {
-      hallId: selectedHall.id,
-      hallName: selectedHall.name,
-      packageId: selectedPackage.id,
-      packageName: selectedPackage.name,
-      eventDate,
-      eventTime,
-      guestCount,
-      contactName,
-      contactPhone,
-      contactEmail,
-      notes: notes || ''
-    };
-
-    try {
-      const resp = await fetch('/api/halls/quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!resp.ok) {
-        let errorData;
-        try {
-          errorData = await resp.json();
-        } catch {
-          errorData = { error: 'Failed to send quote request' };
-        }
-        throw new Error(errorData.error || 'Failed to send quote request');
-      }
-      const data = await resp.json();
-      setAddedMessage('Your request has been sent. We will contact you with a quotation.');
-      setTimeout(() => setAddedMessage(''), 5000);
-      setShowQuoteModal(false);
-      setSelectedHall(null);
-      setSelectedPackage(null);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to send quote request. Please try again later.');
-    }
-  };
-
-  const handlePaymentSuccess = (paymentData) => {
-    if (!pendingBooking) return;
-    addBooking(pendingBooking, paymentData);
-    setIsPaymentOpen(false);
-    setAddedMessage(`${pendingBooking.name} (${pendingBooking.packageName}) booked successfully!`);
-    setPendingBooking(null);
-    setTimeout(() => setAddedMessage(''), 3000);
-  };
 
   const getMinDate = () => {
     const today = new Date();
@@ -220,7 +166,7 @@ const HallBooking = () => {
 
   return (
     <>
-    <section id="halls" className="hall-booking">
+    <section id="halls" className="hall-booking page-fade">
       <div className="hall-booking-container">
         <h2>Book an Event Hall</h2>
         <p className="section-subtitle">Perfect venues for your special events and gatherings</p>
@@ -326,15 +272,6 @@ const HallBooking = () => {
         </div>
       </div>
     </section>
-      {isPaymentOpen && (
-        <PaymentGateway
-          isOpen={isPaymentOpen}
-          total={pendingBooking ? pendingBooking.price : 0}
-          onClose={() => setIsPaymentOpen(false)}
-          onPaymentSuccess={handlePaymentSuccess}
-        />
-      )}
-      <HallQuoteModal isOpen={showQuoteModal} onClose={() => setShowQuoteModal(false)} onSubmit={handleSendQuote} initial={{}} />
     </>
   );
 };

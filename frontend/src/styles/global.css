@@ -146,6 +146,16 @@ input:focus, select:focus, textarea:focus {
   opacity: 0.8; 
 }
 
+/* fade in for new pages */
+.page-fade {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .product-spacer {
   flex: 1;
 }

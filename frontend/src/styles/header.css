@@ -666,3 +666,20 @@
     top: 54px;
   }
 }
+
+/* animate mobile navigation panel for better UX */
+@media (max-width: 780px) {
+  .main-nav {
+    /* override display:none from earlier rules */
+    display: block !important;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.35s ease;
+  }
+  .main-nav.open {
+    max-height: calc(100vh - 60px);
+    opacity: 1;
+    overflow-y: auto;
+  }
+}

@@ -12,6 +12,7 @@ import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import UserProfile from './components/UserProfile';
 import PaymentPage from './pages/PaymentPage';
+import HallBookingPage from './pages/HallBookingPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import './styles/global.css';
@@ -92,6 +93,15 @@ function App() {
                               url="https://megapark-hotel.com/profile"
                             />
                             <UserProfile />
+                          </>
+                        } />
+                        <Route path="/hall-booking" element={
+                          <>
+                            <SEO
+                              title="Hall Quote Request - Megapark Resort"
+                              description="Fill the booking form to request a quote for your selected hall package."
+                            />
+                            <HallBookingPage />
                           </>
                         } />
                       </Routes>
