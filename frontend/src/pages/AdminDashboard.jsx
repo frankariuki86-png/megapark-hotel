@@ -514,7 +514,8 @@ const AdminDashboard = () => {
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
           <div className="bookings-section">
-            <h2>Booking Management</h2>
+            <h2>🛏️ Room Bookings</h2>
+            <p className="section-info">Approve or reject incoming room bookings. Once approved, confirmation is sent to the guest.</p>
             <div className="table-container">
               <table className="bookings-table">
                 <thead>
@@ -542,12 +543,30 @@ const AdminDashboard = () => {
                       <td><span className={`status-badge ${booking.status}`}>{booking.status}</span></td>
                       <td><span className={`payment-badge ${booking.paymentStatus}`}>{booking.paymentStatus}</span></td>
                       <td>
-                        <button className="action-btn confirm" onClick={() => updateBooking(booking.id, { status: 'confirmed' })}>
-                          ✓
-                        </button>
-                        <button className="action-btn cancel" onClick={() => cancelBooking(booking.id)}>
-                          ✕
-                        </button>
+                        <div className="action-buttons">
+                          <button 
+                            className="action-btn confirm" 
+                            onClick={() => {
+                              updateBooking(booking.id, { status: 'confirmed' });
+                              pushToast(`Booking ${booking.id} approved ✓`, 'success');
+                            }}
+                            title="Approve this booking"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button 
+                            className="action-btn cancel" 
+                            onClick={() => {
+                              if (window.confirm(`Reject booking ${booking.id}?`)) {
+                                cancelBooking(booking.id);
+                                pushToast(`Booking ${booking.id} rejected`, 'info');
+                              }
+                            }}
+                            title="Reject this booking"
+                          >
+                            ✕ Reject
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -560,7 +579,8 @@ const AdminDashboard = () => {
         {/* Events Tab */}
         {activeTab === 'events' && (
           <div className="events-section">
-            <h2>Event Management</h2>
+            <h2>🎪 Event Bookings</h2>
+            <p className="section-info">Manage hall and event requests. Approve confirmed bookings or reject as needed.</p>
             <div className="table-container">
               <table className="events-table">
                 <thead>
@@ -588,12 +608,30 @@ const AdminDashboard = () => {
                       <td><span className={`status-badge ${event.status}`}>{event.status}</span></td>
                       <td><span className={`payment-badge ${event.paymentStatus}`}>{event.paymentStatus}</span></td>
                       <td>
-                        <button className="action-btn confirm" onClick={() => updateEvent(event.id, { status: 'confirmed' })}>
-                          ✓
-                        </button>
-                        <button className="action-btn cancel" onClick={() => cancelEvent(event.id)}>
-                          ✕
-                        </button>
+                        <div className="action-buttons">
+                          <button 
+                            className="action-btn confirm" 
+                            onClick={() => {
+                              updateEvent(event.id, { status: 'confirmed' });
+                              pushToast(`Event ${event.id} approved ✓`, 'success');
+                            }}
+                            title="Approve this event"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button 
+                            className="action-btn cancel" 
+                            onClick={() => {
+                              if (window.confirm(`Reject event ${event.id}?`)) {
+                                cancelEvent(event.id);
+                                pushToast(`Event ${event.id} rejected`, 'info');
+                              }
+                            }}
+                            title="Reject this event"
+                          >
+                            ✕ Reject
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -160,6 +160,13 @@
 .food-menu-card h3 {
   color: #06324a; 
   margin-bottom: 6px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.food-menu-body p {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .food-menu-card img {
@@ -171,6 +178,37 @@
 
 .food-menu-body { 
   padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* space between name, desc, price, controls */
+}
+
+.food-menu-body h3 {
+  margin: 0;
+}
+
+.food-menu-body p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.card-meta {
+  margin-top: 12px;
+}
+
+.product-quantity-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.product-quantity-container label {
+  margin-bottom: 4px;
+}
+
+.product-quantity-container select {
+  max-width: 80px;
 }
 
 /* Halls Section */

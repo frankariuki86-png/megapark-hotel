@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import PaymentGateway from '../components/PaymentGateway';
 import '../styles/checkout.css';
 
@@ -12,6 +13,7 @@ const Checkout = () => {
   const [selectedDelivery, setSelectedDelivery] = useState({});
   const [quantities, setQuantities] = useState({});
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('after');
   
   // Customer details form
@@ -94,6 +96,7 @@ const Checkout = () => {
     }
 
     // pay after delivery (place order directly) for food only
+      setIsProcessing(true);
     const orderData = {
       customerName: customerInfo.name,
       customerEmail: customerInfo.email,
@@ -116,9 +119,11 @@ const Checkout = () => {
       alert(`Order placed successfully! Order ID: ${order.id}. We'll contact you soon.`);
       navigate('/orders');
     }
+      setIsProcessing(false);
   };
 
   const handlePaymentSuccess = (paymentData) => {
+      setIsProcessing(true);
     // place menu order with payment
     const orderData = {
       customerName: customerInfo.name,
@@ -150,6 +155,7 @@ const Checkout = () => {
     setIsPaymentOpen(false);
     alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}\nWe've sent a confirmation email to ${customerInfo.email}`);
     navigate('/orders');
+      setIsProcessing(false);
   };
 
   const today = new Date();
@@ -183,7 +189,8 @@ const Checkout = () => {
   }
 
   return (
-    <div className="checkout-page">
+    <div className="checkout-page page-fade">
+      {isProcessing && <LoadingSpinner fullscreen label="Processing your order..." />}
       <div className="page-title">Review your order</div>
 
       <div className="checkout-grid">

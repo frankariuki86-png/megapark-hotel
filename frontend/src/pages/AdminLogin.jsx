@@ -49,7 +49,7 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="admin-login-container">
+    <div className="admin-login-container page-fade">
       <div className="admin-login-box">
         <div className="admin-login-header">
           <h1>🔐 Admin Portal</h1>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import '../styles/orders.css';
 
 const Orders = () => {
@@ -44,7 +45,7 @@ const Orders = () => {
 
   if (orders.length === 0) {
     return (
-      <div className="orders-page">
+      <div className="orders-page page-fade">
         <div className="main">
           <div className="page-title">Your Orders</div>
           <div className="empty-orders-message">
@@ -59,7 +60,7 @@ const Orders = () => {
   const selectedOrder = selectedOrderId ? orders.find(o => o.id === selectedOrderId) : null;
 
   return (
-    <div className="orders-page">
+    <div className="orders-page page-fade">
       <div className="main">
         <div className="page-title">Your Orders</div>
 

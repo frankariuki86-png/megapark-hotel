@@ -147,7 +147,7 @@ const AdminUsersPage = () => {
   const isAdmin = adminUser?.role === 'admin';
 
   return (
-    <div className="admin-users-container">
+    <div className="admin-users-container page-fade">
       <div className="admin-users-header">
         <div>
           <h1>💼 Admin & Staff Users</h1>

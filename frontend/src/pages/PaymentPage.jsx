@@ -32,7 +32,7 @@ const PaymentPage = () => {
   };
 
   return (
-    <div style={{ minHeight: '60vh' }}>
+    <div style={{ minHeight: '60vh' }} className="page-fade">
       <h2 style={{ padding: 16 }}>Secure Payment</h2>
       <div style={{ padding: 16 }}>
         <div style={{ marginBottom: 12 }}>

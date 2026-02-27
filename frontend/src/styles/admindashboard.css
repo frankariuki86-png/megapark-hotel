@@ -1270,3 +1270,28 @@ tr:hover {
 :root.dark-mode .order-items {
   border-color: #444;
 }
+/* action buttons layout */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  border-radius: 4px;
+}
+
+/* section info text */
+.section-info {
+  color: #666;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+:root.dark-mode .section-info {
+  color: #b0b0b0;
+}

@@ -88,6 +88,18 @@ export const AdminProvider = ({ children }) => {
     }
   ]);
 
+  // listen for booking events emitted from cart context (or other parts of app)
+  useEffect(() => {
+    const handler = (e) => {
+      const newBooking = e.detail;
+      if (newBooking && newBooking.id) {
+        setBookings(prev => [newBooking, ...prev]);
+      }
+    };
+    window.addEventListener('new-booking', handler);
+    return () => window.removeEventListener('new-booking', handler);
+  }, []);
+
   const [events, setEvents] = useState([
     {
       id: 'EVENT-001',

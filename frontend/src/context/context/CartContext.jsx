@@ -197,6 +197,23 @@ export const CartProvider = ({ children }) => {
 
     // Optimistically add local booking
     setOrders(prev => [localBooking, ...prev]);
+    // notify admin context (listeners) that a new booking has been created
+    try {
+      window.dispatchEvent(new CustomEvent('new-booking', { detail: {
+        ...localBooking,
+        // use same data structure admin expects
+        id: localBooking.id,
+        guestName: booking.guestName || customer.name || '',
+        roomName: booking.name || booking.roomName || booking.room || '',
+        checkIn: booking.checkIn || booking.date || '',
+        checkOut: booking.checkOut || booking.date || '',
+        totalPrice: booking.price || booking.total || 0,
+        status: localBooking.status,
+        paymentStatus: localBooking.paymentStatus
+      } }));
+    } catch (e) {
+      // ignore if window not available (SSR) or event fails
+    }
 
     try {
       // Persist booking to backend

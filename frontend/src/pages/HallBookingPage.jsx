@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import Button from '../components/ui/Button';
 import '../styles/hallbooking.css';
 
 const HallBookingPage = () => {
@@ -17,6 +18,8 @@ const HallBookingPage = () => {
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const nameRef = useRef(null);
+  const phoneRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -36,6 +39,12 @@ const HallBookingPage = () => {
     e.preventDefault();
     if (!contactName || !contactPhone) {
       setMessage('Please fill in the required fields.');
+      if (!contactName && nameRef.current) nameRef.current.classList.add('invalid');
+      if (!contactPhone && phoneRef.current) phoneRef.current.classList.add('invalid');
+      setTimeout(() => {
+        if (nameRef.current) nameRef.current.classList.remove('invalid');
+        if (phoneRef.current) phoneRef.current.classList.remove('invalid');
+      }, 400);
       return;
     }
 
@@ -92,17 +101,23 @@ const HallBookingPage = () => {
           {initialGuests && <p><strong>Guests:</strong> {initialGuests}</p>}
         </div>
         <form onSubmit={handleSubmit} className="hq-form">
-          <label>Full name*</label>
+          <label htmlFor="contact-name">Full name*</label>
           <input
+            id="contact-name"
+            ref={nameRef}
             value={contactName}
             onChange={e => setContactName(e.target.value)}
             required
+            aria-required="true"
           />
-          <label>Phone*</label>
+          <label htmlFor="contact-phone">Phone*</label>
           <input
+            id="contact-phone"
+            ref={phoneRef}
             value={contactPhone}
             onChange={e => setContactPhone(e.target.value)}
             required
+            aria-required="true"
           />
           <label>Email</label>
           <input
@@ -117,21 +132,18 @@ const HallBookingPage = () => {
           />
           {message && <p className="small" style={{ color: 'var(--text-primary)' }}>{message}</p>}
           <div className="hq-actions">
-            <button
+            <Button
               type="button"
-              className="btn"
-              onClick={() => navigate(-1)}
-              disabled={submitting}
-            >
+              variant="">
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="btn primary"
+              variant="primary"
               disabled={submitting}
             >
               {submitting ? 'Sending...' : 'Send Request'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

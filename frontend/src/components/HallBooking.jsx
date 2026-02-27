@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import Button from './ui/Button';
 import '../styles/hallbooking.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
@@ -171,7 +172,7 @@ const HallBooking = () => {
         <h2>Book an Event Hall</h2>
         <p className="section-subtitle">Perfect venues for your special events and gatherings</p>
 
-        <div className="event-filters">
+        <div className="event-filters" role="form" aria-labelledby="hall-date-time-guest">
           <div className="filter-group">
             <label htmlFor="event-date">Event Date</label>
             <input
@@ -180,6 +181,7 @@ const HallBooking = () => {
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
               min={getMinDate()}
+              aria-required="true"
             />
           </div>
 
@@ -190,6 +192,7 @@ const HallBooking = () => {
               type="time"
               value={eventTime}
               onChange={(e) => setEventTime(e.target.value)}
+              aria-required="true"
             />
           </div>
 
@@ -202,6 +205,7 @@ const HallBooking = () => {
               max="500"
               value={guestCount}
               onChange={(e) => setGuestCount(parseInt(e.target.value))}
+              aria-required="true"
             />
           </div>
         </div>
@@ -251,13 +255,15 @@ const HallBooking = () => {
                           </div>
                         )}
 
-                        <button
-                          className="btn btn-select-package"
+                        <Button
+                          variant="primary"
+                          className="btn-select-package"
                           onClick={() => handleRequestQuote(hall, pkg)}
                           disabled={!eventDate || !eventTime || guestCount > hall.capacity}
+                          aria-label={guestCount > hall.capacity ? `Exceeds capacity for ${hall.name}` : 'Request quote for this package'}
                         >
                           {guestCount > hall.capacity ? `Max ${hall.capacity} guests` : 'Request Quote'}
-                        </button>
+                        </Button>
 
                         {addedMessage && (
                           <div className="success-message">{addedMessage}</div>
