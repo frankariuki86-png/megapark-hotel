@@ -18,11 +18,7 @@ const UserProfile = () => {
   });
   const [paymentForm, setPaymentForm] = useState({
     type: 'mpesa',
-    phoneNumber: '',
-    cardNumber: '',
-    cardHolder: '',
-    expiryDate: '',
-    cvv: ''
+    phoneNumber: ''
   });
 
   if (!user) {
@@ -59,18 +55,10 @@ const UserProfile = () => {
     e.preventDefault();
     if (paymentForm.type === 'mpesa' && paymentForm.phoneNumber) {
       addPaymentMethod(paymentForm);
-    } else if (paymentForm.type === 'card' && paymentForm.cardNumber && paymentForm.expiryDate) {
-      addPaymentMethod(paymentForm);
-    } else if (paymentForm.type === 'paypal' && paymentForm.phoneNumber) {
-      addPaymentMethod(paymentForm);
     }
     setPaymentForm({
       type: 'mpesa',
-      phoneNumber: '',
-      cardNumber: '',
-      cardHolder: '',
-      expiryDate: '',
-      cvv: ''
+      phoneNumber: ''
     });
     setShowPaymentForm(false);
   };
@@ -219,88 +207,20 @@ const UserProfile = () => {
 
         {showPaymentForm && (
           <form onSubmit={handleAddPayment} className="payment-form">
+            <h3>M-Pesa Payment Method</h3>
             <div className="form-group">
-              <label>Payment Type</label>
-              <select value={paymentForm.type} onChange={(e) => setPaymentForm({...paymentForm, type: e.target.value})}>
-                <option value="mpesa">M-Pesa</option>
-                <option value="card">Credit/Debit Card</option>
-                <option value="paypal">PayPal</option>
-              </select>
+              <label>Phone Number</label>
+              <input
+                type="tel"
+                value={paymentForm.phoneNumber}
+                onChange={(e) => setPaymentForm({...paymentForm, phoneNumber: e.target.value})}
+                placeholder="+254712345678"
+                required
+              />
             </div>
-
-            {paymentForm.type === 'mpesa' && (
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  type="tel"
-                  value={paymentForm.phoneNumber}
-                  onChange={(e) => setPaymentForm({...paymentForm, phoneNumber: e.target.value})}
-                  placeholder="+254712345678"
-                  required
-                />
-              </div>
-            )}
-
-            {paymentForm.type === 'card' && (
-              <>
-                <div className="form-group">
-                  <label>Card Holder Name</label>
-                  <input
-                    type="text"
-                    value={paymentForm.cardHolder}
-                    onChange={(e) => setPaymentForm({...paymentForm, cardHolder: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Card Number</label>
-                  <input
-                    type="text"
-                    value={paymentForm.cardNumber}
-                    onChange={(e) => setPaymentForm({...paymentForm, cardNumber: e.target.value})}
-                    placeholder="1234 5678 9012 3456"
-                    required
-                  />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Expiry Date</label>
-                    <input
-                      type="text"
-                      value={paymentForm.expiryDate}
-                      onChange={(e) => setPaymentForm({...paymentForm, expiryDate: e.target.value})}
-                      placeholder="MM/YY"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>CVV</label>
-                    <input
-                      type="text"
-                      value={paymentForm.cvv}
-                      onChange={(e) => setPaymentForm({...paymentForm, cvv: e.target.value})}
-                      placeholder="123"
-                      required
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {paymentForm.type === 'paypal' && (
-              <div className="form-group">
-                <label>PayPal Email</label>
-                <input
-                  type="email"
-                  value={paymentForm.phoneNumber}
-                  onChange={(e) => setPaymentForm({...paymentForm, phoneNumber: e.target.value})}
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
-            )}
-
-            <button type="submit" className="btn btn-primary">Save Payment Method</button>
+            <button type="submit" className="btn btn-primary">
+              Save Payment Method
+            </button>
           </form>
         )}
 
@@ -313,13 +233,9 @@ const UserProfile = () => {
                 {method.isDefault && <span className="default-badge">Default</span>}
                 <div className="payment-details">
                   <p className="payment-type">
-                    {method.type === 'mpesa' && '📱 M-Pesa'}
-                    {method.type === 'card' && '💳 Card'}
-                    {method.type === 'paypal' && '🅿️ PayPal'}
+                    📱 M-Pesa
                   </p>
-                  {method.type === 'mpesa' && <p>{method.phoneNumber}</p>}
-                  {method.type === 'card' && <p>•••• •••• •••• {method.cardNumber.slice(-4)}</p>}
-                  {method.type === 'paypal' && <p>{method.phoneNumber}</p>}
+                  <p>{method.phoneNumber}</p>
                 </div>
                 <div className="payment-actions">
                   {!method.isDefault && (
