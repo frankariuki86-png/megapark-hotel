@@ -2,13 +2,18 @@
 
 // Backend API Client with JWT Authentication
 const BACKEND_URL = (() => {
-  // In production on Render, use relative paths (same origin)
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return ''; // Empty string means use relative paths
+  // Prefer env var (VITE_API_URL) if set
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, ''); // Remove trailing slash
   }
-  // In development, use localhost
-  return (typeof window !== 'undefined' && window.__MEGAPARK_BACKEND_URL) || 'http://localhost:3000';
+  // Development or localhost
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return ''; // Relative paths if on same origin (e.g., Render with embedded frontend)
+  }
+  return 'http://localhost:3000';
 })();
+console.log('[mockApi] BACKEND_URL:', BACKEND_URL);
 const TIMEOUT = 8000;
 const TOKEN_KEY = '__megapark_jwt__';
 const REFRESH_TOKEN_KEY = '__megapark_refresh__';
