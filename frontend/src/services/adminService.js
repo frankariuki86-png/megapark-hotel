@@ -1,12 +1,14 @@
 // Admin API Service - handles all admin operations (menu, rooms, halls, staff)
-// Determine API base URL - use relative paths on production, localhost in development
+// Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
 const API_BASE_URL = (() => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    // Production on Render - use relative paths
     return '/api';
   }
-  // Development or custom env var
-  return import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  return 'http://localhost:3000/api';
 })();
 
 console.log('[adminService] API_BASE_URL:', API_BASE_URL);
