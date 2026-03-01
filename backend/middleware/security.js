@@ -28,9 +28,27 @@ const securityHeaders = helmet({
 /**
  * CORS configuration
  */
-const corsOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:3000'];
+const corsOrigins = (() => {
+  const envOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'];
+  
+  // Add support for Vercel preview deployments (*.vercel.app)
+  const patterns = [
+    /localhost/,
+    /vercel\.app$/  // Matches any Vercel preview/production domain
+  ];
+  
+  return (origin, callback) => {
+    if (!origin || envOrigins.includes(origin) || patterns.some(p => p.test(origin))) {
+      callback(null, true);
+    } else {
+      // Log rejected origins for debugging
+      console.warn(`[CORS] Rejected origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  };
+})();
 
 const corsConfig = cors({
   origin: corsOrigins,
