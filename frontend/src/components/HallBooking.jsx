@@ -69,7 +69,8 @@ const HallBooking = () => {
   const getApiBaseUrl = () => {
     const envUrl = import.meta.env.VITE_API_URL;
     if (envUrl) {
-      return envUrl.replace(/\/$/, '');
+      const base = envUrl.replace(/\/$/, '');
+      return `${base}/api`;
     }
     if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
       return '/api';
