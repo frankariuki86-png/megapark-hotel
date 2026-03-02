@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../context/AdminContext';
 import { Plus, Edit2, Trash2, Eye, EyeOff, Check, X } from 'lucide-react';
+import { staffService } from '../services/adminService';
 import '../styles/admin-users.css';
 
 const AdminUsersPage = () => {
@@ -28,20 +29,7 @@ const AdminUsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('__megapark_jwt__');
-      const response = await fetch('http://localhost:3000/api/admin/users', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await staffService.getAll();
       setUsers(data);
       setError('');
     } catch (err) {
@@ -69,28 +57,10 @@ const AdminUsersPage = () => {
     }
 
     try {
-      const token = localStorage.getItem('__megapark_jwt__');
-      const method = editingId ? 'PUT' : 'POST';
-      const url = editingId 
-        ? `http://localhost:3000/api/admin/users/${editingId}`
-        : 'http://localhost:3000/api/admin/users';
-
-      const body = editingId
-        ? { name: formData.name, role: formData.role }
-        : { email: formData.email, name: formData.name, role: formData.role, password: formData.password };
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || `Request failed: ${response.status}`);
+      if (editingId) {
+        await staffService.update(editingId, { name: formData.name, role: formData.role });
+      } else {
+        await staffService.create({ email: formData.email, name: formData.name, role: formData.role, password: formData.password });
       }
 
       setFormData({ email: '', password: '', name: '', role: 'staff' });
@@ -118,18 +88,7 @@ const AdminUsersPage = () => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      const token = localStorage.getItem('__megapark_jwt__');
-      const response = await fetch(`http://localhost:3000/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Delete failed: ${response.status}`);
-      }
-
+      await staffService.delete(userId);
       await fetchUsers();
     } catch (err) {
       setError(err.message);

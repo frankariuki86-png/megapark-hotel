@@ -241,7 +241,7 @@ const RoomsManagement = () => {
                 <td>{room.roomNumber}</td>
                 <td>{room.name}</td>
                 <td>{room.type}</td>
-                <td>KES {room.pricePerNight.toLocaleString()}</td>
+                <td>KES {(parseInt(room.pricePerNight) || 0).toLocaleString()}</td>
                 <td>{room.capacity} guests</td>
                 <td>{room.availability ? '✅' : '❌'}</td>
                 <td className="actions">
