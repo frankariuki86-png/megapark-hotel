@@ -1,4 +1,5 @@
 const { Client } = require('pg');
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -96,6 +97,50 @@ const seedData = {
       paymentStatus: 'paid',
       paymentMethod: 'stripe'
     }
+  ],
+  halls: [
+    {
+      name: 'Main Convention Hall',
+      description: 'Spacious hall suitable for conferences and large events',
+      capacity: 500,
+      price_per_day: 20000,
+      amenities: ['projector','stage','sound system'],
+      images: [],
+      availability: true
+    },
+    {
+      name: 'Banquet Hall',
+      description: 'Elegant hall for weddings and banquets',
+      capacity: 300,
+      price_per_day: 15000,
+      amenities: ['catering','decor'],
+      images: [],
+      availability: true
+    }
+  ],
+  rooms: [
+    {
+      room_number: '101',
+      name: 'Single Room',
+      type: 'single',
+      description: 'Cozy single occupancy room',
+      price_per_night: 5000,
+      capacity: 1,
+      amenities: ['wifi'],
+      images: [],
+      availability: true
+    },
+    {
+      room_number: '201',
+      name: 'Double Room',
+      type: 'double',
+      description: 'Room for two guests',
+      price_per_night: 8000,
+      capacity: 2,
+      amenities: ['wifi','air conditioning'],
+      images: [],
+      availability: true
+    }
   ]
 };
 
@@ -109,13 +154,16 @@ const seed = async () => {
     console.log('\nTruncating existing data...');
     await client.query('DELETE FROM food_orders');
     await client.query('DELETE FROM menu_items');
+    await client.query('DELETE FROM halls');
+    await client.query('DELETE FROM rooms');
 
     // Seed menu items
     console.log('Seeding menu items...');
     for (const item of seedData.menuItems) {
-      const q = `INSERT INTO menu_items (name, description, category, price, image, availability, preparation_time)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+      const q = `INSERT INTO menu_items (id, name, description, category, price, image, availability, preparation_time)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
       await client.query(q, [
+        uuidv4(),
         item.name,
         item.description,
         item.category,
@@ -125,7 +173,46 @@ const seed = async () => {
         item.preparationTime
       ]);
     }
+
     console.log(`✓ Seeded ${seedData.menuItems.length} menu items`);
+
+    // Seed halls
+    console.log('Seeding halls...');
+    for (const hall of seedData.halls) {
+      const q = `INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`;
+      await client.query(q, [
+        uuidv4(),
+        hall.name,
+        hall.description,
+        hall.capacity,
+        hall.price_per_day,
+        hall.amenities,
+        hall.images,
+        hall.availability
+      ]);
+    }
+    console.log(`✓ Seeded ${seedData.halls.length} halls`);
+
+    // Seed rooms
+    console.log('Seeding rooms...');
+    for (const room of seedData.rooms) {
+      const q = `INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`;
+      await client.query(q, [
+        uuidv4(),
+        room.room_number,
+        room.name,
+        room.type,
+        room.description,
+        room.price_per_night,
+        room.capacity,
+        room.amenities,
+        room.images,
+        room.availability
+      ]);
+    }
+    console.log(`✓ Seeded ${seedData.rooms.length} rooms`);
 
     // Seed orders
     console.log('Seeding food orders...');

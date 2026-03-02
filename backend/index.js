@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 
 // Initialize Sentry if configured
 try {
@@ -102,6 +103,117 @@ const readJSON = (p, fallback) => {
   }
 }
 const writeJSON = (p, data) => { fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
+
+// Helper to seed the database with menus, halls, rooms, and admin user
+async function seedDatabase(pgClient, logger) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@megapark.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const bcrypt = require('bcrypt');
+
+  // quick exit if something already exists
+  const menuCount = await pgClient.query('SELECT COUNT(*) FROM menu_items');
+  if (menuCount.rows[0].count > 0) {
+    return { already: true, menuItems: parseInt(menuCount.rows[0].count, 10) };
+  }
+
+  const menuSeeds = [
+    { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, preparation_time: 30 },
+    { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, preparation_time: 15 },
+    { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, preparation_time: 10 },
+    { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, preparation_time: 8 },
+    { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, preparation_time: 5 }
+  ];
+
+  const hallsSeeds = [
+    {
+      name: 'Main Convention Hall',
+      description: 'Spacious hall suitable for conferences and large events',
+      capacity: 500,
+      price_per_day: 20000,
+      amenities: ['projector', 'stage', 'sound system'],
+      images: [],
+      availability: true
+    },
+    {
+      name: 'Banquet Hall',
+      description: 'Elegant hall for weddings and banquets',
+      capacity: 300,
+      price_per_day: 15000,
+      amenities: ['catering service', 'decorations'],
+      images: [],
+      availability: true
+    }
+  ];
+
+  const roomsSeeds = [
+    {
+      room_number: '101',
+      name: 'Single Room',
+      type: 'single',
+      description: 'Cozy single occupancy room',
+      price_per_night: 5000,
+      capacity: 1,
+      amenities: ['wifi'],
+      images: [],
+      availability: true
+    },
+    {
+      room_number: '201',
+      name: 'Double Room',
+      type: 'double',
+      description: 'Comfortable room for two guests',
+      price_per_night: 8000,
+      capacity: 2,
+      amenities: ['wifi', 'air conditioning'],
+      images: [],
+      availability: true
+    }
+  ];
+
+  // insert menu items with generated ids
+  for (const item of menuSeeds) {
+    await pgClient.query(
+      'INSERT INTO menu_items (id, name, description, category, price, availability, preparation_time) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [uuidv4(), item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
+    );
+  }
+
+  // insert halls
+  for (const hall of hallsSeeds) {
+    await pgClient.query(
+      'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, hall.images, hall.availability]
+    );
+  }
+
+  // insert rooms
+  for (const room of roomsSeeds) {
+    await pgClient.query(
+      'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+      [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, room.images, room.availability]
+    );
+  }
+
+  // ensure admin user exists
+  const hash = await bcrypt.hash(adminPassword, 10);
+  await pgClient.query(
+    `INSERT INTO users (id, email, password_hash, name, role, is_active) 
+       VALUES ($1, $2, $3, $4, 'admin', true)
+       ON CONFLICT (email) DO NOTHING`,
+    [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
+  );
+
+  logger.info('Database seeded successfully');
+  return {
+    ok: true,
+    message: 'Database seeded',
+    menuItems: menuSeeds.length,
+    halls: hallsSeeds.length,
+    rooms: roomsSeeds.length,
+    adminUser: adminEmail,
+    adminPassword: adminPassword === 'admin123' ? '(default)' : '(custom from env)'
+  };
+}
 
 // Routes
 // Routes - with error handling
@@ -322,10 +434,14 @@ app.get('/api/seed-status', async (req, res) => {
     }
     const menuCount = await pgClient.query('SELECT COUNT(*) FROM menu_items');
     const userCount = await pgClient.query('SELECT COUNT(*) FROM users WHERE role=\'admin\'');
-    const needsSeed = menuCount.rows[0].count === 0 || userCount.rows[0].count === 0;
+    const hallCount = await pgClient.query('SELECT COUNT(*) FROM halls');
+    const roomCount = await pgClient.query('SELECT COUNT(*) FROM rooms');
+    const needsSeed = menuCount.rows[0].count === 0 || userCount.rows[0].count === 0 || hallCount.rows[0].count === 0 || roomCount.rows[0].count === 0;
     res.json({
       needsSeed,
       menuItems: parseInt(menuCount.rows[0].count),
+      halls: parseInt(hallCount.rows[0].count),
+      rooms: parseInt(roomCount.rows[0].count),
       adminUsers: parseInt(userCount.rows[0].count),
       message: needsSeed ? 'Database needs seeding' : 'Database is ready'
     });
@@ -342,58 +458,20 @@ app.get('/api/seed', async (req, res) => {
   try {
     const seedKey = process.env.SEED_KEY || 'demo-key';
     const queryKey = req.query.key || '';
-    
+
     if (queryKey !== seedKey && process.env.NODE_ENV === 'production') {
       return res.status(403).json({ error: 'Unauthorized. Provide ?key=demo-key' });
     }
-    
+
     if (!pgClient) {
       return res.status(400).json({ error: 'No database configured' });
     }
-    
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@megapark.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    const bcrypt = require('bcrypt');
-    
-    // Check if already seeded
-    const menuCheck = await pgClient.query('SELECT COUNT(*) FROM menu_items');
-    if (menuCheck.rows[0].count > 0) {
-      return res.json({ message: 'Database already seeded', menuItems: parseInt(menuCheck.rows[0].count) });
+
+    const result = await seedDatabase(pgClient, logger);
+    if (result.already) {
+      return res.json({ message: 'Database already seeded', menuItems: result.menuItems });
     }
-    
-    // Seed menu items
-    const menuSeeds = [
-      { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, preparation_time: 30 },
-      { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, preparation_time: 15 },
-      { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, preparation_time: 10 },
-      { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, preparation_time: 8 },
-      { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, preparation_time: 5 }
-    ];
-    
-    for (const item of menuSeeds) {
-      await pgClient.query(
-        'INSERT INTO menu_items (name, description, category, price, availability, preparation_time) VALUES ($1, $2, $3, $4, $5, $6)',
-        [item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
-      );
-    }
-    
-    // Ensure admin user exists
-    const hash = await bcrypt.hash(adminPassword, 10);
-    await pgClient.query(
-      `INSERT INTO users (id, email, password_hash, name, role, is_active) 
-       VALUES ($1, $2, $3, $4, 'admin', true)
-       ON CONFLICT (email) DO NOTHING`,
-      [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
-    );
-    
-    logger.info('Database seeded successfully');
-    res.json({
-      ok: true,
-      message: 'Database seeded',
-      menuItems: menuSeeds.length,
-      adminUser: adminEmail,
-      adminPassword: adminPassword === 'admin123' ? '(default)' : '(custom from env)'
-    });
+    return res.json(result);
   } catch (e) {
     logger.error('Seed error:', e.message);
     res.status(500).json({ error: 'Seeding failed', message: e.message });
@@ -405,58 +483,20 @@ app.post('/api/seed', async (req, res) => {
     const seedKey = process.env.SEED_KEY || 'demo-key';
     const authHeader = req.headers.authorization || '';
     const providedKey = authHeader.replace('Bearer ', '');
-    
+
     if (providedKey !== seedKey && process.env.NODE_ENV === 'production') {
       return res.status(403).json({ error: 'Unauthorized. Provide Authorization: Bearer demo-key' });
     }
-    
+
     if (!pgClient) {
       return res.status(400).json({ error: 'No database configured' });
     }
-    
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@megapark.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    const bcrypt = require('bcrypt');
-    
-    // Check if already seeded
-    const menuCheck = await pgClient.query('SELECT COUNT(*) FROM menu_items');
-    if (menuCheck.rows[0].count > 0) {
-      return res.json({ message: 'Database already seeded', menuItems: parseInt(menuCheck.rows[0].count) });
+
+    const result = await seedDatabase(pgClient, logger);
+    if (result.already) {
+      return res.json({ message: 'Database already seeded', menuItems: result.menuItems });
     }
-    
-    // Seed menu items
-    const menuSeeds = [
-      { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, preparation_time: 30 },
-      { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, preparation_time: 15 },
-      { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, preparation_time: 10 },
-      { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, preparation_time: 8 },
-      { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, preparation_time: 5 }
-    ];
-    
-    for (const item of menuSeeds) {
-      await pgClient.query(
-        'INSERT INTO menu_items (name, description, category, price, availability, preparation_time) VALUES ($1, $2, $3, $4, $5, $6)',
-        [item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
-      );
-    }
-    
-    // Ensure admin user exists
-    const hash = await bcrypt.hash(adminPassword, 10);
-    await pgClient.query(
-      `INSERT INTO users (id, email, password_hash, name, role, is_active) 
-       VALUES ($1, $2, $3, $4, 'admin', true)
-       ON CONFLICT (email) DO NOTHING`,
-      [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
-    );
-    
-    logger.info('Database seeded successfully');
-    res.json({
-      ok: true,
-      message: 'Database seeded',
-      menuItems: menuSeeds.length,
-      adminUser: adminEmail,
-      adminPassword: adminPassword === 'admin123' ? '(default)' : '(custom from env)'
-    });
+    return res.json(result);
   } catch (e) {
     logger.error('Seed error:', e.message);
     res.status(500).json({ error: 'Seeding failed', message: e.message });
