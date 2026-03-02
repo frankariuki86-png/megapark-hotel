@@ -111,6 +111,8 @@ async function seedDatabase(pgClient, logger) {
   const bcrypt = require('bcrypt');
 
   try {
+    logger.info('seedDatabase: Starting seed process');
+    
     // Check what's already in the database
     const menuCountRes = await pgClient.query('SELECT COUNT(*) as count FROM menu_items');
     const hallCountRes = await pgClient.query('SELECT COUNT(*) as count FROM halls');
@@ -122,20 +124,24 @@ async function seedDatabase(pgClient, logger) {
     const roomCount = parseInt(roomCountRes.rows[0].count, 10);
     const adminCount = parseInt(adminCountRes.rows[0].count, 10);
 
+    logger.info(`seedDatabase: Counts - menu:${menuCount}, halls:${hallCount}, rooms:${roomCount}, admin:${adminCount}`);
+
     // Seed menu items (5 items)
     if (menuCount === 0) {
+      logger.info('seedDatabase: Starting menu seed');
       const menuItems = [
-        { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, prep_time: 30 },
-        { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, prep_time: 15 },
-        { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, prep_time: 10 },
-        { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, prep_time: 8 },
-        { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, prep_time: 5 }
+        { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, prep_time: 30 },
+        { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, prep_time: 15 },
+        { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, prep_time: 10 },
+        { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, prep_time: 8 },
+        { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, prep_time: 5 }
       ];
       
       for (const item of menuItems) {
+        logger.info(`seedDatabase: Inserting menu item: ${item.name}`);
         await pgClient.query(
           'INSERT INTO menu_items (id, name, description, category, price, availability, preparation_time) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [uuidv4(), item.name, item.description, item.category, item.price, item.availability, item.prep_time]
+          [uuidv4(), item.name, item.description, item.category, item.price, true, item.prep_time]
         );
       }
       logger.info('✓ Seeded 5 menu items');
@@ -143,29 +149,29 @@ async function seedDatabase(pgClient, logger) {
 
     // Seed halls (2 items)
     if (hallCount === 0) {
+      logger.info('seedDatabase: Starting halls seed');
       const halls = [
         {
           name: 'Main Convention Hall',
           description: 'Spacious hall suitable for conferences and large events',
           capacity: 500,
           price_per_day: 20000,
-          amenities: ['projector', 'stage', 'sound system'],
-          availability: true
+          amenities: ['projector', 'stage', 'sound system']
         },
         {
           name: 'Banquet Hall',
           description: 'Elegant hall for weddings and banquets',
           capacity: 300,
           price_per_day: 15000,
-          amenities: ['catering service', 'decorations'],
-          availability: true
+          amenities: ['catering service', 'decorations']
         }
       ];
       
       for (const hall of halls) {
+        logger.info(`seedDatabase: Inserting hall: ${hall.name}`);
         await pgClient.query(
           'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-          [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, [], hall.availability]
+          [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, JSON.stringify(hall.amenities), JSON.stringify([]), true]
         );
       }
       logger.info('✓ Seeded 2 halls');
@@ -173,6 +179,7 @@ async function seedDatabase(pgClient, logger) {
 
     // Seed rooms (2 items)
     if (roomCount === 0) {
+      logger.info('seedDatabase: Starting rooms seed');
       const rooms = [
         {
           name: 'Single Room',
@@ -191,9 +198,10 @@ async function seedDatabase(pgClient, logger) {
       ];
       
       for (const room of rooms) {
+        logger.info(`seedDatabase: Inserting room: ${room.name}`);
         await pgClient.query(
           'INSERT INTO rooms (id, name, description, price, capacity, amenities) VALUES ($1, $2, $3, $4, $5, $6)',
-          [uuidv4(), room.name, room.description, room.price, room.capacity, room.amenities]
+          [uuidv4(), room.name, room.description, room.price, room.capacity, JSON.stringify(room.amenities)]
         );
       }
       logger.info('✓ Seeded 2 rooms');
@@ -201,6 +209,7 @@ async function seedDatabase(pgClient, logger) {
 
     // Seed admin user
     if (adminCount === 0) {
+      logger.info('seedDatabase: Starting admin seed');
       const hash = await bcrypt.hash(adminPassword, 10);
       await pgClient.query(
         'INSERT INTO users (id, email, password_hash, name, role, is_active) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -209,6 +218,7 @@ async function seedDatabase(pgClient, logger) {
       logger.info('✓ Seeded admin user');
     }
 
+    logger.info('seedDatabase: Completed successfully');
     return {
       ok: true,
       message: 'Seeding complete',
@@ -218,7 +228,7 @@ async function seedDatabase(pgClient, logger) {
       adminUser: adminEmail
     };
   } catch (e) {
-    logger.error('seedDatabase error:', e.message, e.stack);
+    logger.error('seedDatabase FATAL error:', e.message, e.stack);
     throw e;
   }
 }
