@@ -274,11 +274,12 @@ export const AdminProvider = ({ children }) => {
   });
 
   // Initialize mock API storage on mount (seed if empty)
+  // Run ONCE on mount only - don't re-fetch when adminUser changes to avoid rate limiting
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        console.log('[AdminContext] Initializing - fetching menu items...');
+        console.log('[AdminContext] Initializing on mount - fetching menu items...');
         const remoteMenu = await fetchMenuItems();
         console.log('[AdminContext] Menu fetch result:', remoteMenu);
         if (mounted) {
@@ -287,13 +288,16 @@ export const AdminProvider = ({ children }) => {
             setMenuItems(remoteMenu);
           } else {
             console.log('[AdminContext] Remote menu empty, seeding with defaults');
+            // Delay before seeding to avoid immediate back-to-back requests
+            await new Promise(r => setTimeout(r, 500));
             await saveMenuItems(menuItems);
           }
         }
         
-        // Fetch halls and rooms
+        // Fetch halls and rooms (add delays between requests to avoid rate limiting)
         try {
           console.log('[AdminContext] Fetching halls...');
+          await new Promise(r => setTimeout(r, 300)); // Stagger requests
           const remoteHalls = await fetchHalls();
           console.log('[AdminContext] Halls fetch result:', remoteHalls);
           if (mounted && remoteHalls && remoteHalls.length > 0) {
@@ -306,6 +310,7 @@ export const AdminProvider = ({ children }) => {
         
         try {
           console.log('[AdminContext] Fetching rooms...');
+          await new Promise(r => setTimeout(r, 300)); // Stagger requests
           const remoteRooms = await fetchRooms();
           console.log('[AdminContext] Rooms fetch result:', remoteRooms);
           if (mounted && remoteRooms && remoteRooms.length > 0) {
@@ -315,32 +320,39 @@ export const AdminProvider = ({ children }) => {
         } catch (e) {
           console.warn('[AdminContext] Rooms fetch error (non-fatal):', e.message);
         }
-        
-        // Only fetch orders if user is logged in (has adminUser)
-        if (adminUser) {
-          try {
-            console.log('[AdminContext] Fetching orders for logged-in user...');
-            const remoteOrders = await fetchOrders();
-            console.log('[AdminContext] Orders fetch result:', remoteOrders);
-            if (mounted) {
-              if (remoteOrders && remoteOrders.length > 0) {
-                console.log('[AdminContext] Setting orders from remote:', remoteOrders.length, 'orders');
-                setFoodOrders(remoteOrders);
-              } else {
-                console.log('[AdminContext] Remote orders empty, seeding with defaults');
-                await saveOrders(foodOrders);
-              }
-            }
-          } catch (e) {
-            console.warn('[AdminContext] Orders fetch error:', e.message);
-          }
-        }
       } catch (err) {
         console.error('[AdminContext] Critical initialization error:', err.message, err);
       }
     })();
     return () => { mounted = false };
-  }, [adminUser]);
+  }, []); // Empty dependency array: run ONCE on mount only
+
+  // Fetch orders separately ONLY when user is already logged in
+  useEffect(() => {
+    if (!adminUser) return; // Don't fetch if no user
+    
+    let mounted = true;
+    (async () => {
+      try {
+        console.log('[AdminContext] Fetching orders for logged-in user...');
+        await new Promise(r => setTimeout(r, 300)); // Stagger after login
+        const remoteOrders = await fetchOrders();
+        console.log('[AdminContext] Orders fetch result:', remoteOrders);
+        if (mounted) {
+          if (remoteOrders && remoteOrders.length > 0) {
+            console.log('[AdminContext] Setting orders from remote:', remoteOrders.length, 'orders');
+            setFoodOrders(remoteOrders);
+          } else {
+            console.log('[AdminContext] Remote orders empty, seeding with defaults');
+            await saveOrders(foodOrders);
+          }
+        }
+      } catch (e) {
+        console.warn('[AdminContext] Orders fetch error:', e.message);
+      }
+    })();
+    return () => { mounted = false };
+  }, [adminUser]); // Only re-fetch orders when user logs in/out
 
   // Real backend login via API
   const adminLogin = useCallback(async (email, password) => {
