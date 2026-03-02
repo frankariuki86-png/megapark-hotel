@@ -110,10 +110,19 @@ async function seedDatabase(pgClient, logger) {
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
   const bcrypt = require('bcrypt');
 
-  // quick exit if something already exists
+  // Check counts for each table
   const menuCount = await pgClient.query('SELECT COUNT(*) FROM menu_items');
-  if (menuCount.rows[0].count > 0) {
-    return { already: true, menuItems: parseInt(menuCount.rows[0].count, 10) };
+  const hallCount = await pgClient.query('SELECT COUNT(*) FROM halls');
+  const roomCount = await pgClient.query('SELECT COUNT(*) FROM rooms');
+  const adminCount = await pgClient.query('SELECT COUNT(*) FROM users WHERE role=\'admin\'');
+  
+  const menuPresent = parseInt(menuCount.rows[0].count, 10) > 0;
+  const hallsPresent = parseInt(hallCount.rows[0].count, 10) > 0;
+  const roomsPresent = parseInt(roomCount.rows[0].count, 10) > 0;
+  const adminPresent = parseInt(adminCount.rows[0].count, 10) > 0;
+
+  if (menuPresent && hallsPresent && roomsPresent && adminPresent) {
+    return { already: true, menuItems: parseInt(menuCount.rows[0].count, 10), halls: parseInt(hallCount.rows[0].count, 10), rooms: parseInt(roomCount.rows[0].count, 10) };
   }
 
   const menuSeeds = [
@@ -123,6 +132,17 @@ async function seedDatabase(pgClient, logger) {
     { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, preparation_time: 8 },
     { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, preparation_time: 5 }
   ];
+
+  // Seed menu items if empty
+  if (!menuPresent) {
+    for (const item of menuSeeds) {
+      await pgClient.query(
+        'INSERT INTO menu_items (id, name, description, category, price, availability, preparation_time) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [uuidv4(), item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
+      );
+    }
+    logger.info('Seeded', menuSeeds.length, 'menu items');
+  }
 
   const hallsSeeds = [
     {
@@ -170,40 +190,39 @@ async function seedDatabase(pgClient, logger) {
     }
   ];
 
-  // insert menu items with generated ids
-  for (const item of menuSeeds) {
-    await pgClient.query(
-      'INSERT INTO menu_items (id, name, description, category, price, availability, preparation_time) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [uuidv4(), item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
-    );
-  }
-
-  // insert halls
-  for (const hall of hallsSeeds) {
+  // Seed halls if empty
+  if (!hallsPresent) {
+    for (const hall of hallsSeeds) {
     await pgClient.query(
       'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
       [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, hall.images, hall.availability]
     );
+    }
+    logger.info('Seeded', hallsSeeds.length, 'halls');
   }
 
-  // insert rooms
-  for (const room of roomsSeeds) {
+  // Seed rooms if empty
+  if (!roomsPresent) {
+    for (const room of roomsSeeds) {
     await pgClient.query(
       'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
       [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, room.images, room.availability]
-    );
-  }
+    );    }
+    logger.info('Seeded', roomsSeeds.length, 'rooms');  }
 
   // ensure admin user exists
-  const hash = await bcrypt.hash(adminPassword, 10);
-  await pgClient.query(
-    `INSERT INTO users (id, email, password_hash, name, role, is_active) 
-       VALUES ($1, $2, $3, $4, 'admin', true)
-       ON CONFLICT (email) DO NOTHING`,
-    [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
-  );
+  if (!adminPresent) {
+    const hash = await bcrypt.hash(adminPassword, 10);
+    await pgClient.query(
+      `INSERT INTO users (id, email, password_hash, name, role, is_active) 
+         VALUES ($1, $2, $3, $4, 'admin', true)
+         ON CONFLICT (email) DO NOTHING`,
+      [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
+    );
+    logger.info('Created admin user:', adminEmail);
+  }
 
-  logger.info('Database seeded successfully');
+  logger.info('Seed check completed');
   return {
     ok: true,
     message: 'Database seeded',
