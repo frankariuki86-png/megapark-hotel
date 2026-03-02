@@ -110,130 +110,123 @@ async function seedDatabase(pgClient, logger) {
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
   const bcrypt = require('bcrypt');
 
-  // Check counts for each table
-  const menuCount = await pgClient.query('SELECT COUNT(*) FROM menu_items');
-  const hallCount = await pgClient.query('SELECT COUNT(*) FROM halls');
-  const roomCount = await pgClient.query('SELECT COUNT(*) FROM rooms');
-  const adminCount = await pgClient.query('SELECT COUNT(*) FROM users WHERE role=\'admin\'');
-  
-  const menuPresent = parseInt(menuCount.rows[0].count, 10) > 0;
-  const hallsPresent = parseInt(hallCount.rows[0].count, 10) > 0;
-  const roomsPresent = parseInt(roomCount.rows[0].count, 10) > 0;
-  const adminPresent = parseInt(adminCount.rows[0].count, 10) > 0;
+  try {
+    // Check what's already in the database
+    const menuCountRes = await pgClient.query('SELECT COUNT(*) as count FROM menu_items');
+    const hallCountRes = await pgClient.query('SELECT COUNT(*) as count FROM halls');
+    const roomCountRes = await pgClient.query('SELECT COUNT(*) as count FROM rooms');
+    const adminCountRes = await pgClient.query('SELECT COUNT(*) as count FROM users WHERE role=\'admin\'');
+    
+    const menuCount = parseInt(menuCountRes.rows[0].count, 10);
+    const hallCount = parseInt(hallCountRes.rows[0].count, 10);
+    const roomCount = parseInt(roomCountRes.rows[0].count, 10);
+    const adminCount = parseInt(adminCountRes.rows[0].count, 10);
 
-  if (menuPresent && hallsPresent && roomsPresent && adminPresent) {
-    return { already: true, menuItems: parseInt(menuCount.rows[0].count, 10), halls: parseInt(hallCount.rows[0].count, 10), rooms: parseInt(roomCount.rows[0].count, 10) };
-  }
+    // Seed menu items (5 items)
+    if (menuCount === 0) {
+      const menuItems = [
+        { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, prep_time: 30 },
+        { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, prep_time: 15 },
+        { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, prep_time: 10 },
+        { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, prep_time: 8 },
+        { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, prep_time: 5 }
+      ];
+      
+      for (const item of menuItems) {
+        await pgClient.query(
+          'INSERT INTO menu_items (id, name, description, category, price, availability, preparation_time) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [uuidv4(), item.name, item.description, item.category, item.price, item.availability, item.prep_time]
+        );
+      }
+      logger.info('✓ Seeded 5 menu items');
+    }
 
-  const menuSeeds = [
-    { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, preparation_time: 30 },
-    { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, preparation_time: 15 },
-    { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, preparation_time: 10 },
-    { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, preparation_time: 8 },
-    { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, preparation_time: 5 }
-  ];
+    // Seed halls (2 items)
+    if (hallCount === 0) {
+      const halls = [
+        {
+          name: 'Main Convention Hall',
+          description: 'Spacious hall suitable for conferences and large events',
+          capacity: 500,
+          price_per_day: 20000,
+          amenities: ['projector', 'stage', 'sound system'],
+          availability: true
+        },
+        {
+          name: 'Banquet Hall',
+          description: 'Elegant hall for weddings and banquets',
+          capacity: 300,
+          price_per_day: 15000,
+          amenities: ['catering service', 'decorations'],
+          availability: true
+        }
+      ];
+      
+      for (const hall of halls) {
+        await pgClient.query(
+          'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, [], hall.availability]
+        );
+      }
+      logger.info('✓ Seeded 2 halls');
+    }
 
-  // Seed menu items if empty
-  if (!menuPresent) {
-    for (const item of menuSeeds) {
+    // Seed rooms (2 items)
+    if (roomCount === 0) {
+      const rooms = [
+        {
+          room_number: '101',
+          name: 'Single Room',
+          type: 'single',
+          description: 'Cozy single occupancy room',
+          price_per_night: 5000,
+          capacity: 1,
+          amenities: ['wifi'],
+          availability: true
+        },
+        {
+          room_number: '201',
+          name: 'Double Room',
+          type: 'double',
+          description: 'Comfortable room for two guests',
+          price_per_night: 8000,
+          capacity: 2,
+          amenities: ['wifi', 'air conditioning'],
+          availability: true
+        }
+      ];
+      
+      for (const room of rooms) {
+        await pgClient.query(
+          'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+          [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, [], room.availability]
+        );
+      }
+      logger.info('✓ Seeded 2 rooms');
+    }
+
+    // Seed admin user
+    if (adminCount === 0) {
+      const hash = await bcrypt.hash(adminPassword, 10);
       await pgClient.query(
-        'INSERT INTO menu_items (id, name, description, category, price, availability, preparation_time) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [uuidv4(), item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
+        'INSERT INTO users (id, email, password_hash, name, role, is_active) VALUES ($1, $2, $3, $4, $5, $6)',
+        [`admin-${Date.now()}`, adminEmail, hash, 'Admin User', 'admin', true]
       );
+      logger.info('✓ Seeded admin user');
     }
-    logger.info('Seeded', menuSeeds.length, 'menu items');
+
+    return {
+      ok: true,
+      message: 'Seeding complete',
+      menuItems: menuCount === 0 ? 5 : menuCount,
+      halls: hallCount === 0 ? 2 : hallCount,
+      rooms: roomCount === 0 ? 2 : roomCount,
+      adminUser: adminEmail
+    };
+  } catch (e) {
+    logger.error('seedDatabase error:', e.message, e.stack);
+    throw e;
   }
-
-  const hallsSeeds = [
-    {
-      name: 'Main Convention Hall',
-      description: 'Spacious hall suitable for conferences and large events',
-      capacity: 500,
-      price_per_day: 20000,
-      amenities: ['projector', 'stage', 'sound system'],
-      images: [],
-      availability: true
-    },
-    {
-      name: 'Banquet Hall',
-      description: 'Elegant hall for weddings and banquets',
-      capacity: 300,
-      price_per_day: 15000,
-      amenities: ['catering service', 'decorations'],
-      images: [],
-      availability: true
-    }
-  ];
-
-  const roomsSeeds = [
-    {
-      room_number: '101',
-      name: 'Single Room',
-      type: 'single',
-      description: 'Cozy single occupancy room',
-      price_per_night: 5000,
-      capacity: 1,
-      amenities: ['wifi'],
-      images: [],
-      availability: true
-    },
-    {
-      room_number: '201',
-      name: 'Double Room',
-      type: 'double',
-      description: 'Comfortable room for two guests',
-      price_per_night: 8000,
-      capacity: 2,
-      amenities: ['wifi', 'air conditioning'],
-      images: [],
-      availability: true
-    }
-  ];
-
-  // Seed halls if empty
-  if (!hallsPresent) {
-    for (const hall of hallsSeeds) {
-      await pgClient.query(
-        'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-        [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, hall.images, hall.availability]
-      );
-    }
-    logger.info('Seeded', hallsSeeds.length, 'halls');
-  }
-
-  // Seed rooms if empty
-  if (!roomsPresent) {
-    for (const room of roomsSeeds) {
-      await pgClient.query(
-        'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
-        [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, room.images, room.availability]
-      );
-    }
-    logger.info('Seeded', roomsSeeds.length, 'rooms');
-  }
-
-  // Ensure admin user exists
-  if (!adminPresent) {
-    const hash = await bcrypt.hash(adminPassword, 10);
-    await pgClient.query(
-      `INSERT INTO users (id, email, password_hash, name, role, is_active) 
-       VALUES ($1, $2, $3, $4, 'admin', true)
-       ON CONFLICT (email) DO NOTHING`,
-      [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
-    );
-    logger.info('Created admin user:', adminEmail);
-  }
-
-  logger.info('Seed check completed');
-  return {
-    ok: true,
-    message: 'Database seeded',
-    menuItems: menuSeeds.length,
-    halls: hallsSeeds.length,
-    rooms: roomsSeeds.length,
-    adminUser: adminEmail,
-    adminPassword: adminPassword === 'admin123' ? '(default)' : '(custom from env)'
-  };
 }
 
 // Routes
