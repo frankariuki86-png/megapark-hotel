@@ -115,16 +115,14 @@ async function seedDatabase(pgClient, logger) {
     
     // Check what's already in the database
     const menuCountRes = await pgClient.query('SELECT COUNT(*) as count FROM menu_items');
-    const hallCountRes = await pgClient.query('SELECT COUNT(*) as count FROM halls');
     const roomCountRes = await pgClient.query('SELECT COUNT(*) as count FROM rooms');
     const adminCountRes = await pgClient.query('SELECT COUNT(*) as count FROM users WHERE role=\'admin\'');
     
     const menuCount = parseInt(menuCountRes.rows[0].count, 10);
-    const hallCount = parseInt(hallCountRes.rows[0].count, 10);
     const roomCount = parseInt(roomCountRes.rows[0].count, 10);
     const adminCount = parseInt(adminCountRes.rows[0].count, 10);
 
-    logger.info(`seedDatabase: Counts - menu:${menuCount}, halls:${hallCount}, rooms:${roomCount}, admin:${adminCount}`);
+    logger.info(`seedDatabase: Counts - menu:${menuCount}, rooms:${roomCount}, admin:${adminCount}`);
 
     // Seed menu items (5 items)
     if (menuCount === 0) {
@@ -145,36 +143,6 @@ async function seedDatabase(pgClient, logger) {
         );
       }
       logger.info('✓ Seeded 5 menu items');
-    }
-
-    // Seed halls (2 items)
-    if (hallCount === 0) {
-      logger.info('seedDatabase: Starting halls seed');
-      const halls = [
-        {
-          name: 'Main Convention Hall',
-          description: 'Spacious hall suitable for conferences and large events',
-          capacity: 500,
-          price_per_day: 20000,
-          amenities: ['projector', 'stage', 'sound system']
-        },
-        {
-          name: 'Banquet Hall',
-          description: 'Elegant hall for weddings and banquets',
-          capacity: 300,
-          price_per_day: 15000,
-          amenities: ['catering service', 'decorations']
-        }
-      ];
-      
-      for (const hall of halls) {
-        logger.info(`seedDatabase: Inserting hall: ${hall.name}`);
-        await pgClient.query(
-          'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-          [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, JSON.stringify(hall.amenities), JSON.stringify([]), true]
-        );
-      }
-      logger.info('✓ Seeded 2 halls');
     }
 
     // Seed rooms (2 items)
@@ -223,7 +191,6 @@ async function seedDatabase(pgClient, logger) {
       ok: true,
       message: 'Seeding complete',
       menuItems: menuCount === 0 ? 5 : menuCount,
-      halls: hallCount === 0 ? 2 : hallCount,
       rooms: roomCount === 0 ? 2 : roomCount,
       adminUser: adminEmail
     };
@@ -452,13 +419,11 @@ app.get('/api/seed-status', async (req, res) => {
     }
     const menuCount = await pgClient.query('SELECT COUNT(*) FROM menu_items');
     const userCount = await pgClient.query('SELECT COUNT(*) FROM users WHERE role=\'admin\'');
-    const hallCount = await pgClient.query('SELECT COUNT(*) FROM halls');
     const roomCount = await pgClient.query('SELECT COUNT(*) FROM rooms');
-    const needsSeed = menuCount.rows[0].count === 0 || userCount.rows[0].count === 0 || hallCount.rows[0].count === 0 || roomCount.rows[0].count === 0;
+    const needsSeed = menuCount.rows[0].count === 0 || userCount.rows[0].count === 0 || roomCount.rows[0].count === 0;
     res.json({
       needsSeed,
       menuItems: parseInt(menuCount.rows[0].count),
-      halls: parseInt(hallCount.rows[0].count),
       rooms: parseInt(roomCount.rows[0].count),
       adminUsers: parseInt(userCount.rows[0].count),
       message: needsSeed ? 'Database needs seeding' : 'Database is ready'
