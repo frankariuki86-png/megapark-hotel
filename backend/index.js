@@ -546,6 +546,68 @@ app.post('/api/admin/reset-demo', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/seed/rooms
+ * Idempotent endpoint to ensure demo rooms exist. Protected by SEED_KEY.
+ */
+app.post('/api/seed/rooms', async (req, res) => {
+  try {
+    const seedKey = process.env.SEED_KEY || 'demo-key';
+    const authHeader = req.headers.authorization || '';
+    const providedKey = authHeader.replace('Bearer ', '');
+
+    if (providedKey !== seedKey && process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Unauthorized. Provide Authorization: Bearer demo-key' });
+    }
+
+    if (!pgClient) return res.status(400).json({ error: 'No database configured' });
+
+    const roomCountRes = await pgClient.query('SELECT COUNT(*) FROM rooms');
+    const roomCount = parseInt(roomCountRes.rows[0].count, 10);
+    if (roomCount > 0) return res.json({ message: 'Rooms already present', rooms: roomCount });
+
+    const roomsSeeds = [
+      {
+        room_number: '101',
+        name: 'Single Room',
+        type: 'single',
+        description: 'Cozy single occupancy room',
+        price_per_night: 5000,
+        capacity: 1,
+        amenities: ['wifi'],
+        images: [],
+        availability: true
+      },
+      {
+        room_number: '201',
+        name: 'Double Room',
+        type: 'double',
+        description: 'Comfortable room for two guests',
+        price_per_night: 8000,
+        capacity: 2,
+        amenities: ['wifi', 'air conditioning'],
+        images: [],
+        availability: true
+      }
+    ];
+
+    for (const room of roomsSeeds) {
+      await pgClient.query(
+        'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+        [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, room.images, room.availability]
+      );
+    }
+
+    const newCountRes = await pgClient.query('SELECT COUNT(*) FROM rooms');
+    const newCount = parseInt(newCountRes.rows[0].count, 10);
+    logger.info('Seeded rooms:', newCount - roomCount);
+    res.json({ ok: true, message: 'Rooms seeded', roomsBefore: roomCount, roomsAfter: newCount });
+  } catch (e) {
+    logger.error('Seed rooms error:', e.message);
+    res.status(500).json({ error: 'Seeding rooms failed', message: e.message });
+  }
+});
+
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
 const backendDir = __dirname;
