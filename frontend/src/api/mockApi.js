@@ -57,7 +57,9 @@ const setTokens = (accessToken, refreshToken) => {
 
 // HTTP call wrapper with exponential backoff for rate limits
 const call = async (method, path, body = null, skipAuth = false, retryCount = 0) => {
-  const url = `${BACKEND_URL}${path}`;
+  // ensure path begins with /api so even stale bundles hit correct endpoints
+  const normalizedPath = path.startsWith('/api') ? path : `/api${path}`;
+  const url = `${BACKEND_URL}${normalizedPath}`;
   const headers = { 'Content-Type': 'application/json' };
   
   // Add JWT token if available (except for login endpoint)
