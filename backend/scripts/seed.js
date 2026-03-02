@@ -197,19 +197,15 @@ const seed = async () => {
     // Seed rooms
     console.log('Seeding rooms...');
     for (const room of seedData.rooms) {
-      const q = `INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`;
+      const q = `INSERT INTO rooms (id, name, description, price, capacity, amenities)
+                 VALUES ($1,$2,$3,$4,$5,$6)`;
       await client.query(q, [
         uuidv4(),
-        room.room_number,
         room.name,
-        room.type,
         room.description,
         room.price_per_night,
         room.capacity,
-        room.amenities,
-        room.images,
-        room.availability
+        room.amenities
       ]);
     }
     console.log(`✓ Seeded ${seedData.rooms.length} rooms`);

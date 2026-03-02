@@ -175,31 +175,25 @@ async function seedDatabase(pgClient, logger) {
     if (roomCount === 0) {
       const rooms = [
         {
-          room_number: '101',
           name: 'Single Room',
-          type: 'single',
           description: 'Cozy single occupancy room',
-          price_per_night: 5000,
+          price: 5000,
           capacity: 1,
-          amenities: ['wifi'],
-          availability: true
+          amenities: ['wifi']
         },
         {
-          room_number: '201',
           name: 'Double Room',
-          type: 'double',
           description: 'Comfortable room for two guests',
-          price_per_night: 8000,
+          price: 8000,
           capacity: 2,
-          amenities: ['wifi', 'air conditioning'],
-          availability: true
+          amenities: ['wifi', 'air conditioning']
         }
       ];
       
       for (const room of rooms) {
         await pgClient.query(
-          'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-          [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, [], room.availability]
+          'INSERT INTO rooms (id, name, description, price, capacity, amenities) VALUES ($1, $2, $3, $4, $5, $6)',
+          [uuidv4(), room.name, room.description, room.price, room.capacity, room.amenities]
         );
       }
       logger.info('✓ Seeded 2 rooms');
@@ -487,8 +481,8 @@ app.get('/api/seed', async (req, res) => {
     }
     return res.json(result);
   } catch (e) {
-    logger.error('Seed error:', e.message);
-    res.status(500).json({ error: 'Seeding failed', message: e.message });
+    logger.error('Seed GET error:', e.message, e.stack);
+    res.status(500).json({ error: 'Seeding failed', message: e.message, stack: e.stack });
   }
 });
 
@@ -512,8 +506,8 @@ app.post('/api/seed', async (req, res) => {
     }
     return res.json(result);
   } catch (e) {
-    logger.error('Seed error:', e.message);
-    res.status(500).json({ error: 'Seeding failed', message: e.message });
+    logger.error('Seed POST error:', e.message, e.stack);
+    res.status(500).json({ error: 'Seeding failed', message: e.message, stack: e.stack });
   }
 });
 
