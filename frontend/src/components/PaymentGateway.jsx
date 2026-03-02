@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
 import '../styles/payment.css';
 
+// Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return '/api';
+  }
+  return 'http://localhost:3000/api';
+};
+const API_BASE_URL = getApiBaseUrl();
+console.log('[PaymentGateway] API_BASE_URL:', API_BASE_URL);
+
 const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess }) => {
   const [selectedMethod, setSelectedMethod] = useState('mpesa');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,7 +35,7 @@ const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess }) => {
 
     setIsProcessing(true);
     try {
-      const resp = await fetch('/api/payments/mpesa/initiate', {
+      const resp = await fetch(`${API_BASE_URL}/payments/mpesa/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: mpesaForm.phoneNumber, amount: total, accountName: mpesaForm.accountName })

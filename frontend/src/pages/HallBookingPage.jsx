@@ -48,6 +48,20 @@ const HallBookingPage = () => {
       return;
     }
 
+    // Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
+    const getApiBaseUrl = () => {
+      const envUrl = import.meta.env.VITE_API_URL;
+      if (envUrl) {
+        return envUrl.replace(/\/$/, '');
+      }
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        return '/api';
+      }
+      return 'http://localhost:3000/api';
+    };
+    const API_BASE_URL = getApiBaseUrl();
+    console.log('[HallBookingPage] API_BASE_URL:', API_BASE_URL);
+
     setSubmitting(true);
     setMessage('');
 
@@ -66,7 +80,7 @@ const HallBookingPage = () => {
         notes
       };
 
-      const resp = await fetch('/api/halls/quote', {
+      const resp = await fetch(`${API_BASE_URL}/halls/quote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

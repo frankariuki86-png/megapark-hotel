@@ -1,6 +1,20 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { createOrder } from '../api/mockApi';
 
+// Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return '/api';
+  }
+  return 'http://localhost:3000/api';
+};
+const API_BASE_URL = getApiBaseUrl();
+console.log('[CartContext] API_BASE_URL:', API_BASE_URL);
+
 const CartContext = createContext();
 
 export const useCart = () => {
@@ -200,7 +214,7 @@ export const CartProvider = ({ children }) => {
 
     try {
       // Persist booking to backend
-      const createRes = await fetch('/api/bookings', {
+      const createRes = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...booking, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone })
@@ -221,7 +235,7 @@ export const CartProvider = ({ children }) => {
       const bookingId = created.id || created.id || localId;
 
       // Create payment intent including bookingId metadata
-      const piResp = await fetch('/api/payments/create-intent', {
+      const piResp = await fetch(`${API_BASE_URL}/payments/create-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ totalPrice: booking.price || 0, customerName: customer.name || '', customerEmail: customer.email || '', bookingId })
@@ -241,7 +255,7 @@ export const CartProvider = ({ children }) => {
       const piData = await piResp.json();
 
       // Confirm payment (backend may mock confirm when stripe not configured)
-      const confirmResp = await fetch('/api/payments/confirm-intent', {
+      const confirmResp = await fetch(`${API_BASE_URL}/payments/confirm-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ intentId: piData.intentId, paymentMethodId: 'pm_card_visa' })
@@ -262,7 +276,7 @@ export const CartProvider = ({ children }) => {
       if (confirmData.status !== 'succeeded') throw new Error(confirmData.error || 'Payment failed');
 
       // Update booking payment status on backend
-      await fetch(`/api/bookings/${bookingId}`, {
+      await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payment_status: 'paid', payment_data: { chargeId: confirmData.chargeId || null, intentId: piData.intentId } })

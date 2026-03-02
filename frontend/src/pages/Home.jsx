@@ -11,6 +11,20 @@ import '../styles/home.css';
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
+// Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
+const API_BASE_URL = (() => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return '/api';
+  }
+  return 'http://localhost:3000/api';
+})();
+
+console.log('[Home] API_BASE_URL:', API_BASE_URL);
+
 const Home = () => {
   const { addToCart } = useCart();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -59,7 +73,8 @@ const Home = () => {
 
         // Menu
         try {
-          const res = await fetch('/api/menu', { headers });
+          const url = `${API_BASE_URL}/menu`;
+          const res = await fetch(url, { headers });
           if (res.ok) {
             const data = await res.json();
             const items = Array.isArray(data) ? data : data.data || fallbackMenuItems;
@@ -69,7 +84,8 @@ const Home = () => {
 
         // Halls
         try {
-          const res = await fetch('/api/halls', { headers });
+          const url = `${API_BASE_URL}/halls`;
+          const res = await fetch(url, { headers });
           if (res.ok) {
             const data = await res.json();
             const items = Array.isArray(data) ? data : data.data || fallbackHalls;
@@ -79,7 +95,8 @@ const Home = () => {
 
         // Rooms
         try {
-          const res = await fetch('/api/rooms', { headers });
+          const url = `${API_BASE_URL}/rooms`;
+          const res = await fetch(url, { headers });
           if (res.ok) {
             const data = await res.json();
             const items = Array.isArray(data) ? data : data.data || fallbackRooms;

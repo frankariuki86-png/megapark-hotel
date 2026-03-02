@@ -65,12 +65,26 @@ const HallBooking = () => {
     }
   ];
 
+  // Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
+  const getApiBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl) {
+      return envUrl.replace(/\/$/, '');
+    }
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+      return '/api';
+    }
+    return 'http://localhost:3000/api';
+  };
+  const API_BASE_URL = getApiBaseUrl();
+  console.log('[HallBooking] API_BASE_URL:', API_BASE_URL);
+
   // Fetch halls from API on component mount
   useEffect(() => {
     const fetchHalls = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/halls', {
+        const res = await fetch(`${API_BASE_URL}/halls`, {
           headers: {
             'Content-Type': 'application/json'
           }

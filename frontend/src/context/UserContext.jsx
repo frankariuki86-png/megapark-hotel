@@ -1,5 +1,19 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
+// Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return '/api';
+  }
+  return 'http://localhost:3000/api';
+};
+const API_BASE_URL = getApiBaseUrl();
+console.log('[UserContext] API_BASE_URL:', API_BASE_URL);
+
 const UserContext = createContext();
 
 export const useUser = () => {
@@ -20,7 +34,7 @@ export const UserProvider = ({ children }) => {
 
   const register = useCallback(async (email, password, firstName, lastName, phone) => {
     try {
-      const resp = await fetch('/api/auth/register', {
+      const resp = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, firstName, lastName, phone })
@@ -46,7 +60,7 @@ export const UserProvider = ({ children }) => {
 
   const login = useCallback(async (email, password) => {
     try {
-      const resp = await fetch('/api/auth/login', {
+      const resp = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -76,7 +90,7 @@ export const UserProvider = ({ children }) => {
 
   const googleLogin = useCallback(async (idToken) => {
     try {
-      const resp = await fetch('/api/auth/google', {
+      const resp = await fetch(`${API_BASE_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken })
