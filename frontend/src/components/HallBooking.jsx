@@ -5,11 +5,7 @@ import Button from './ui/Button';
 import '../styles/hallbooking.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
-const getImagePath = (imageName) => {
-  const base = BASE_URL.replace(/\/+$/, '') + '/';
-  const relative = `${base}images/${imageName}`;
-  return `${window.location.origin}${relative}`.replace(/\/\//g, '/');
-};
+const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
 const HallBooking = () => {
   const { addBooking } = useCart();

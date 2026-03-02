@@ -75,7 +75,7 @@ const globalRateLimit = rateLimit({
  */
 const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per windowMs
+  max: 20, // 20 attempts per windowMs (increased for testing/legitimate retries)
   message: 'Too many login attempts, please try again later',
   skipSuccessfulRequests: true,
   skip: (req) => process.env.NODE_ENV === 'development'

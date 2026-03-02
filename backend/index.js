@@ -283,6 +283,95 @@ app.get('/api/routes-info', (req, res) => {
   });
 });
 
+/**
+ * Seed endpoint - initializes database with demo data and admin user
+ * POST /api/seed - with Authorization header (demo: "demo-key" | retrieve from env SEED_KEY)
+ * GET /api/seed-status - check if seeding is needed
+ */
+app.get('/api/seed-status', async (req, res) => {
+  try {
+    if (!pgClient) {
+      return res.json({ needsSeed: false, reason: 'No database configured' });
+    }
+    const menuCount = await pgClient.query('SELECT COUNT(*) FROM menu_items');
+    const userCount = await pgClient.query('SELECT COUNT(*) FROM users WHERE role=\'admin\'');
+    const needsSeed = menuCount.rows[0].count === 0 || userCount.rows[0].count === 0;
+    res.json({
+      needsSeed,
+      menuItems: parseInt(menuCount.rows[0].count),
+      adminUsers: parseInt(userCount.rows[0].count),
+      message: needsSeed ? 'Database needs seeding' : 'Database is ready'
+    });
+  } catch (e) {
+    logger.warn('Seed status check failed:', e.message);
+    res.json({ needsSeed: true, reason: e.message });
+  }
+});
+
+app.post('/api/seed', async (req, res) => {
+  try {
+    // Optional: check seed key if configured
+    const seedKey = process.env.SEED_KEY || 'demo-key';
+    const authHeader = req.headers.authorization || '';
+    const providedKey = authHeader.replace('Bearer ', '');
+    
+    if (providedKey !== seedKey && process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Unauthorized. Provide ?key=... or Authorization: Bearer ...' });
+    }
+    
+    if (!pgClient) {
+      return res.status(400).json({ error: 'No database configured' });
+    }
+    
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@megapark.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const bcrypt = require('bcrypt');
+    
+    // Check if already seeded
+    const menuCheck = await pgClient.query('SELECT COUNT(*) FROM menu_items');
+    if (menuCheck.rows[0].count > 0) {
+      return res.json({ message: 'Database already seeded', menuItems: parseInt(menuCheck.rows[0].count) });
+    }
+    
+    // Seed menu items
+    const menuSeeds = [
+      { name: 'Nyama Choma', description: 'Grilled meat with local spices', category: 'mains', price: 850, availability: true, preparation_time: 30 },
+      { name: 'Ugali with Sukuma Wiki', description: 'Traditional maize meal with greens', category: 'mains', price: 350, availability: true, preparation_time: 15 },
+      { name: 'Samosas', description: 'Crispy pastry with filling', category: 'appetizers', price: 200, availability: true, preparation_time: 10 },
+      { name: 'Chapati', description: 'Soft flatbread', category: 'sides', price: 100, availability: true, preparation_time: 8 },
+      { name: 'Mango Juice', description: 'Fresh mango juice', category: 'drinks', price: 250, availability: true, preparation_time: 5 }
+    ];
+    
+    for (const item of menuSeeds) {
+      await pgClient.query(
+        'INSERT INTO menu_items (name, description, category, price, availability, preparation_time) VALUES ($1, $2, $3, $4, $5, $6)',
+        [item.name, item.description, item.category, item.price, item.availability, item.preparation_time]
+      );
+    }
+    
+    // Ensure admin user exists
+    const hash = await bcrypt.hash(adminPassword, 10);
+    await pgClient.query(
+      `INSERT INTO users (id, email, password_hash, name, role, is_active) 
+       VALUES ($1, $2, $3, $4, 'admin', true)
+       ON CONFLICT (email) DO NOTHING`,
+      [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
+    );
+    
+    logger.info('Database seeded successfully');
+    res.json({
+      ok: true,
+      message: 'Database seeded',
+      menuItems: menuSeeds.length,
+      adminUser: adminEmail,
+      adminPassword: adminPassword === 'admin123' ? '(default)' : '(custom from env)'
+    });
+  } catch (e) {
+    logger.error('Seed error:', e.message);
+    res.status(500).json({ error: 'Seeding failed', message: e.message });
+  }
+});
+
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
 const backendDir = __dirname;

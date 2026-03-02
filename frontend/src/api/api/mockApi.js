@@ -40,8 +40,8 @@ const setTokens = (accessToken, refreshToken) => {
   } catch (e) {}
 };
 
-// HTTP call wrapper
-const call = async (method, path, body = null, skipAuth = false) => {
+// HTTP call wrapper with exponential backoff for rate limits
+const call = async (method, path, body = null, skipAuth = false, retryCount = 0) => {
   const url = `${BACKEND_URL}${path}`;
   const headers = { 'Content-Type': 'application/json' };
   
@@ -61,6 +61,19 @@ const call = async (method, path, body = null, skipAuth = false) => {
       .then(async res => {
         clearTimeout(timer);
         const json = await res.json().catch(() => ({}));
+        
+        // on 429 (rate limit), retry with exponential backoff (up to 3 times)
+        if (res.status === 429 && retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+          console.warn(`[API] Rate limited (429), retrying after ${delay}ms (attempt ${retryCount + 1})...`);
+          setTimeout(() => {
+            call(method, path, body, skipAuth, retryCount + 1)
+              .then(resolve)
+              .catch(reject);
+          }, delay);
+          return;
+        }
+        
         if (!res.ok) return reject(new Error(json.error || `HTTP ${res.status}`));
         resolve(json);
       })
