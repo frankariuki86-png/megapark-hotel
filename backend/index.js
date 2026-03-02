@@ -193,10 +193,10 @@ async function seedDatabase(pgClient, logger) {
   // Seed halls if empty
   if (!hallsPresent) {
     for (const hall of hallsSeeds) {
-    await pgClient.query(
-      'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-      [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, hall.images, hall.availability]
-    );
+      await pgClient.query(
+        'INSERT INTO halls (id, name, description, capacity, price_per_day, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [uuidv4(), hall.name, hall.description, hall.capacity, hall.price_per_day, hall.amenities, hall.images, hall.availability]
+      );
     }
     logger.info('Seeded', hallsSeeds.length, 'halls');
   }
@@ -204,19 +204,21 @@ async function seedDatabase(pgClient, logger) {
   // Seed rooms if empty
   if (!roomsPresent) {
     for (const room of roomsSeeds) {
-    await pgClient.query(
-      'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
-      [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, room.images, room.availability]
-    );    }
-    logger.info('Seeded', roomsSeeds.length, 'rooms');  }
+      await pgClient.query(
+        'INSERT INTO rooms (id, room_number, name, type, description, price_per_night, capacity, amenities, images, availability) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+        [uuidv4(), room.room_number, room.name, room.type, room.description, room.price_per_night, room.capacity, room.amenities, room.images, room.availability]
+      );
+    }
+    logger.info('Seeded', roomsSeeds.length, 'rooms');
+  }
 
-  // ensure admin user exists
+  // Ensure admin user exists
   if (!adminPresent) {
     const hash = await bcrypt.hash(adminPassword, 10);
     await pgClient.query(
       `INSERT INTO users (id, email, password_hash, name, role, is_active) 
-         VALUES ($1, $2, $3, $4, 'admin', true)
-         ON CONFLICT (email) DO NOTHING`,
+       VALUES ($1, $2, $3, $4, 'admin', true)
+       ON CONFLICT (email) DO NOTHING`,
       [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
     );
     logger.info('Created admin user:', adminEmail);
