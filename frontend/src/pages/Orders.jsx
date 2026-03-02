@@ -146,7 +146,7 @@ const Orders = () => {
                     </div>
                     <div className="product-quantity">Quantity: {item.quantity}</div>
                     <div style={{ marginTop: '10px', fontSize: '14px' }}>
-                      <strong>Price: KES {item.price.toLocaleString()}</strong>
+                      <strong>Price: KES {(parseInt(item.price) || 0).toLocaleString()}</strong>
                     </div>
                     <button
                       className="add-to-cart-button"

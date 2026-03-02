@@ -809,7 +809,7 @@ const AdminDashboard = () => {
                         <span><strong>Prep Time:</strong> {item.preparationTime} min</span>
                       </div>
                       <div className="menu-price">
-                        <strong>KES {item.price.toLocaleString()}</strong>
+                        <strong>KES {(parseInt(item.price) || 0).toLocaleString()}</strong>
                       </div>
                       <div className="menu-actions">
                         <input

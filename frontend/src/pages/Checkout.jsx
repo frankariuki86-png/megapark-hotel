@@ -314,7 +314,7 @@ const Checkout = () => {
                       <p>Hall: KES {item.hallPrice.toLocaleString()} + Catering: KES {item.cateringPrice.toLocaleString()}</p>
                     </div>
                   )}
-                  <div className="product-price">KES {item.price.toLocaleString()}.00</div>
+                  <div className="product-price">KES {(parseInt(item.price) || 0).toLocaleString()}.00</div>
                   {item.type === 'food' && (
                     <div className="product-quantity">
                       <span>
