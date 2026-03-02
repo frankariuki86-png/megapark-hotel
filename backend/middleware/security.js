@@ -86,7 +86,7 @@ const authRateLimit = rateLimit({
  */
 const apiRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // 30 requests per minute
+  max: 120, // 120 requests per minute (2 per second - allows concurrent + retries)
   message: 'API rate limit exceeded',
   skip: (req) => process.env.NODE_ENV === 'development'
 });
