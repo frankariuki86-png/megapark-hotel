@@ -503,6 +503,49 @@ app.post('/api/seed', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/reset-demo
+ * Creates or updates the demo admin user. This is a safe one-off endpoint
+ * protected by the same SEED_KEY used for seeding. Accepts optional JSON
+ * body: { email, password } to override defaults.
+ */
+app.post('/api/admin/reset-demo', async (req, res) => {
+  try {
+    const seedKey = process.env.SEED_KEY || 'demo-key';
+    const authHeader = req.headers.authorization || '';
+    const providedKey = authHeader.replace('Bearer ', '');
+
+    if (providedKey !== seedKey && process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Unauthorized. Provide Authorization: Bearer demo-key' });
+    }
+
+    if (!pgClient) {
+      return res.status(400).json({ error: 'No database configured' });
+    }
+
+    const body = req.body || {};
+    const adminEmail = body.email || process.env.ADMIN_EMAIL || 'admin@megapark.com';
+    const adminPassword = body.password || process.env.ADMIN_PASSWORD || 'admin123';
+    const bcrypt = require('bcrypt');
+
+    const hash = await bcrypt.hash(adminPassword, 10);
+
+    // Upsert admin user: insert or update the password and metadata
+    await pgClient.query(
+      `INSERT INTO users (id, email, password_hash, name, role, is_active)
+       VALUES ($1, $2, $3, $4, 'admin', true)
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, name = EXCLUDED.name, role = 'admin', is_active = true`,
+      [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
+    );
+
+    logger.info('Demo admin ensured:', adminEmail);
+    res.json({ ok: true, message: 'Admin created/updated', adminEmail, adminPassword: adminPassword === 'admin123' ? '(default)' : '(custom)' });
+  } catch (e) {
+    logger.error('Failed to reset demo admin:', e.message);
+    res.status(500).json({ error: 'Could not create/update admin', message: e.message });
+  }
+});
+
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
 const backendDir = __dirname;
