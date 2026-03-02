@@ -602,8 +602,9 @@
     justify-content: center;
     border: 2px solid white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    top: -6px;
-    right: -6px;
+    top: 0;
+    right: 0;
+    transform: translate(50%, -50%);
     z-index: 2001;
   }
 
@@ -699,8 +700,9 @@
     justify-content: center;
     border: 2px solid white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    top: -5px;
-    right: -5px;
+    top: 0;
+    right: 0;
+    transform: translate(50%, -50%);
     z-index: 2002;
   }
 

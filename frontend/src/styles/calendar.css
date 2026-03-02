@@ -80,7 +80,22 @@
   padding: 20px;
   border-radius: 6px;
   margin-bottom: 15px;
+  overflow-x: auto; /* allow horizontal scroll on narrow screens */
+  -webkit-overflow-scrolling: touch;
 }
+
+/* ensure days shrink and layout doesn't break */
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(24px, 1fr));
+  gap: 8px;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(24px, 1fr));
+  gap: 8px;
+} 
 
 .weekdays {
   display: grid;
@@ -236,3 +251,22 @@
     gap: 6px;
   }
 }
+
+@media (max-width: 480px) {
+  /* further reduce spacing and font size for phones */
+  .availability-calendar {
+    padding: 10px;
+  }
+  .calendar-header h4 {
+    font-size: 14px;
+  }
+  .weekdays .weekday,
+  .day {
+    font-size: 10px;
+    padding: 6px 0;
+  }
+  .month-year {
+    min-width: 100px;
+  }
+}
+
