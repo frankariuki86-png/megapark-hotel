@@ -153,23 +153,21 @@ async function seedDatabase(pgClient, logger) {
           name: 'Single Room',
           description: 'Cozy single occupancy room',
           price: 5000,
-          capacity: 1,
-          amenities: '["wifi"]'
+          capacity: 1
         },
         {
           name: 'Double Room',
           description: 'Comfortable room for two guests',
           price: 8000,
-          capacity: 2,
-          amenities: '["wifi","air conditioning"]'
+          capacity: 2
         }
       ];
       
       for (const room of rooms) {
         logger.info(`seedDatabase: Inserting room: ${room.name}`);
         await pgClient.query(
-          'INSERT INTO rooms (id, name, description, price, capacity, amenities) VALUES ($1, $2, $3, $4, $5, $6)',
-          [uuidv4(), room.name, room.description, room.price, room.capacity, room.amenities]
+          'INSERT INTO rooms (id, name, description, price, capacity) VALUES ($1, $2, $3, $4, $5)',
+          [uuidv4(), room.name, room.description, room.price, room.capacity]
         );
       }
       logger.info('✓ Seeded 2 rooms');
