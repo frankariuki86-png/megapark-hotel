@@ -5,7 +5,11 @@ import Button from './ui/Button';
 import '../styles/hallbooking.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
-const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
+const getImagePath = (imageName) => {
+  const base = BASE_URL.replace(/\/+$/, '') + '/';
+  const relative = `${base}images/${imageName}`;
+  return `${window.location.origin}${relative}`.replace(/\/\//g, '/');
+};
 
 const HallBooking = () => {
   const { addBooking } = useCart();
@@ -78,7 +82,9 @@ const HallBooking = () => {
     return 'http://localhost:3000/api';
   };
   const API_BASE_URL = getApiBaseUrl();
-  console.log('[HallBooking] API_BASE_URL:', API_BASE_URL);
+  React.useEffect(() => {
+    console.log('[HallBooking] API_BASE_URL:', API_BASE_URL);
+  }, [API_BASE_URL]);
 
   // Fetch halls from API on component mount
   useEffect(() => {

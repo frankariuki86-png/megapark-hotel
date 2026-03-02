@@ -9,7 +9,11 @@ import EventBooking from '../components/EventBooking';
 import '../styles/home.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
-const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
+const getImagePath = (imageName) => {
+  const base = BASE_URL.replace(/\/+$/, '') + '/';
+  const relative = `${base}images/${imageName}`;
+  return `${window.location.origin}${relative}`.replace(/\/\//g, '/');
+};
 
 // Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
 const API_BASE_URL = (() => {

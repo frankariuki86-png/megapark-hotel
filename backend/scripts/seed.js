@@ -152,6 +152,25 @@ const seed = async () => {
     }
     console.log(`✓ Seeded ${seedData.orders.length} food orders`);
 
+    // ensure there is an admin user in the users table so the dashboard can
+    // log in with the well‑known demo credentials.  the password and email
+    // are driven from environment variables for flexibility.
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@megapark.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const bcrypt = require('bcrypt');
+    try {
+      const hash = await bcrypt.hash(adminPassword, 10);
+      await client.query(
+        `INSERT INTO users(id, email, password_hash, name, role, is_active)
+         VALUES($1,$2,$3,$4,'admin',true)
+         ON CONFLICT (email) DO NOTHING`,
+        [`admin-${Date.now()}`, adminEmail, hash, 'Admin User']
+      );
+      console.log('✓ ensured admin user exists (email='+adminEmail+')');
+    } catch (e) {
+      console.warn('could not create admin user during seed:', e.message);
+    }
+
     console.log('\n✓ Seed completed successfully');
   } catch (e) {
     console.error('❌ Seed error:', e.message);

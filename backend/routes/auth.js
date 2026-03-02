@@ -28,8 +28,13 @@ module.exports = ({ logger, pgClient }) => {
           setTimeout(() => reject(new Error('Database query timeout')), 3000)
         );
         const res = await Promise.race([queryPromise, timeoutPromise]);
-        if (res.rows.length === 0) return null;
-        return res.rows[0];
+        if (res.rows.length > 0) {
+          return res.rows[0];
+        }
+        // if query succeeded but returned no rows, don't immediately give up
+        // let the code continue below to check the file-based storage or
+        // mockUsers.  this makes deployments safer when the DB is empty
+        // (no admin user seeded yet).
       } catch (dbErr) {
         // Fall through to file/mock fallback (don't log, it's expected)
       }
@@ -50,7 +55,29 @@ module.exports = ({ logger, pgClient }) => {
         };
       }
     } catch (e) {
-      // ignore and fallback to mockUsers below
+      // ignore and continue to other fallbacks
+    }
+
+    // if there is an `admin-users.json` file (used by the dashboard/admin
+    // setup tool) check it too so the web UI can authenticate against
+    // that list when no DB user exists yet.
+    try {
+      const adminPath = path.join(__dirname, '..', 'data', 'admin-users.json');
+      const rawAdmin = fs.readFileSync(adminPath, 'utf8');
+      const admins = JSON.parse(rawAdmin || '[]');
+      const a = admins.find(x => String(x.email).toLowerCase() === lowerEmail);
+      if (a) {
+        return {
+          id: a.id,
+          email: a.email,
+          passwordHash: a.passwordHash || a.password_hash || null,
+          password: a.password || undefined,
+          name: a.name || '',
+          role: a.role || 'admin'
+        };
+      }
+    } catch (e) {
+      // ignore and fall back to mock
     }
 
     return mockUsers.find(u => String(u.email).toLowerCase() === lowerEmail) || null;

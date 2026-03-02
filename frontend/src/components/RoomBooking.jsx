@@ -69,7 +69,9 @@ const RoomBooking = () => {
     return 'http://localhost:3000/api';
   };
   const API_BASE_URL = getApiBaseUrl();
-  console.log('[RoomBooking] API_BASE_URL:', API_BASE_URL);
+  React.useEffect(() => {
+    console.log('[RoomBooking] API_BASE_URL:', API_BASE_URL);
+  }, [API_BASE_URL]);
 
   // Fetch rooms from API on component mount
   useEffect(() => {

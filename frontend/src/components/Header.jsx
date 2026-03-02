@@ -9,7 +9,18 @@ import AuthModal from './AuthModal';
 import '../styles/header.css';
 
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
-const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
+// helper returns an absolute URL so that it doesn't resolve relative to the
+// current route (e.g. `/admin`).
+const getImagePath = (imageName) => {
+  // ensure base url ends with a single slash
+  const base = BASE_URL.replace(/\/+$/, '') + '/';
+  const relative = `${base}images/${imageName}`;
+  // make it absolute
+  if (relative.startsWith('http') || relative.startsWith('/')) {
+    return `${window.location.origin}${relative}`.replace(/\/\//g, '/');
+  }
+  return `${window.location.origin}/${relative}`;
+};
 
 const Header = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);

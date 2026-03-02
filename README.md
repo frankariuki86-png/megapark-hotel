@@ -90,6 +90,13 @@ npm start
 
 Default admin credentials:
 - Email: `admin@megapark.com`
+
+> **NOTE:** when you deploy with a real database you must seed at least one
+> admin user (and some menu items).  run `node backend/scripts/seed.js` or
+> provide `ADMIN_EMAIL`/`ADMIN_PASSWORD` environment variables.  the code now
+> automatically falls back to the `backend/data/admin-users.json` file or the
+> built‑in mock user if the DB is empty, but seeding the database avoids
+> login errors and ensures the dashboard shows menu items.
 - Password: `admin123`
 
 ## 📚 API Documentation
