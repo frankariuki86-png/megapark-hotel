@@ -434,11 +434,7 @@ app.post('/api/seed', async (req, res) => {
     logger.error('Seed error:', e.message);
     res.status(500).json({ error: 'Seeding failed', message: e.message });
   }
-};
-
-// Support both GET and POST for seeding (GET with ?key=demo-key for easy browser access)
-app.get('/api/seed', performSeed);
-app.post('/api/seed', performSeed);
+});
 
 // Serve frontend static files
 const frontendDist = path.join(__dirname, '../frontend/dist');
