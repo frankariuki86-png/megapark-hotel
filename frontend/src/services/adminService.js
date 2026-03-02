@@ -3,7 +3,9 @@
 const API_BASE_URL = (() => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
-    return envUrl.replace(/\/$/, '');
+    // Ensure provided VITE_API_URL points to the API root (append /api if missing)
+    const clean = envUrl.replace(/\/$/, '');
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return '/api';
