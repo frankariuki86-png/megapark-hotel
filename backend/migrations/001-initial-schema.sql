@@ -3,24 +3,21 @@
 
 -- Menu Items Table
 CREATE TABLE IF NOT EXISTS menu_items (
-  id VARCHAR(64) PRIMARY KEY DEFAULT CONCAT('menu-', UNIX_TIMESTAMP()),
+  id VARCHAR(64) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   category VARCHAR(50) NOT NULL DEFAULT 'mains' CHECK (category IN ('appetizers', 'mains', 'sides', 'desserts', 'drinks')),
   price DECIMAL(10, 2) NOT NULL,
-  image LONGTEXT,
+  image TEXT,
   availability BOOLEAN NOT NULL DEFAULT true,
   preparation_time INT NOT NULL DEFAULT 15,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_category (category),
-  INDEX idx_availability (availability),
-  INDEX idx_created_at (created_at DESC)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Food Orders Table
 CREATE TABLE IF NOT EXISTS food_orders (
-  id VARCHAR(64) PRIMARY KEY DEFAULT CONCAT('ORDER-', UNIX_TIMESTAMP()),
+  id VARCHAR(64) PRIMARY KEY,
   customer_name VARCHAR(255) NOT NULL,
   customer_email VARCHAR(255),
   customer_phone VARCHAR(20),
@@ -37,12 +34,7 @@ CREATE TABLE IF NOT EXISTS food_orders (
   payment_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded')),
   payment_method VARCHAR(50),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_customer (customer_name),
-  INDEX idx_status (status),
-  INDEX idx_payment_status (payment_status),
-  INDEX idx_created_at (created_at DESC),
-  INDEX idx_order_date (order_date DESC)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Users/Admin Table (for future auth)
@@ -55,9 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
   is_active BOOLEAN NOT NULL DEFAULT true,
   last_login TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_email (email),
-  INDEX idx_role (role)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Rooms Table (for future bookings)
@@ -70,9 +60,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   amenities JSON NOT NULL DEFAULT '[]',
   status VARCHAR(50) NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'maintenance')),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_status (status),
-  INDEX idx_price (price)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Bookings Table (for future reservations)
@@ -90,11 +78,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled')),
   payment_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed')),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
-  INDEX idx_guest (guest_name),
-  INDEX idx_check_in (check_in),
-  INDEX idx_status (status)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT
 );
 
 -- Events Table (for future event bookings)
@@ -112,8 +97,29 @@ CREATE TABLE IF NOT EXISTS events (
   payment_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed')),
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_client (client_name),
-  INDEX idx_event_date (event_date),
-  INDEX idx_status (status)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+-- Standalone indexes for PostgreSQL
+CREATE INDEX IF NOT EXISTS idx_menu_category ON menu_items(category);
+CREATE INDEX IF NOT EXISTS idx_menu_availability ON menu_items(availability);
+CREATE INDEX IF NOT EXISTS idx_menu_created_at ON menu_items(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_orders_customer ON food_orders(customer_name);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON food_orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON food_orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON food_orders(created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_order_date ON food_orders(order_date);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
+CREATE INDEX IF NOT EXISTS idx_rooms_price ON rooms(price);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_guest ON bookings(guest_name);
+CREATE INDEX IF NOT EXISTS idx_bookings_check_in ON bookings(check_in);
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+
+CREATE INDEX IF NOT EXISTS idx_events_client ON events(client_name);
+CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date);
+CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
