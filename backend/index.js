@@ -26,6 +26,12 @@ const app = express();
 // Log the port Render (or environment) assigns so we can verify
 logger.info(`Environment PORT variable: ${process.env.PORT}`);
 
+// Add diagnostic middleware to log all API requests
+app.use('/api', (req, res, next) => {
+  logger.info(`[API Request] ${req.method} ${req.path} from ${req.ip}`);
+  next();
+});
+
 // Security middleware
 app.use(securityHeaders);
 app.use(corsConfig);
@@ -255,8 +261,29 @@ try {
   throw e;
 }
 
-logger.info('✓ All API routes mounted successfully');
-logger.info('✓ Available routes: /api/auth, /api/menu, /api/halls, /api/rooms, /api/orders, /api/payments, /api/admin/users');
+logger.info('✓ ALL API ROUTES MOUNTED SUCCESSFULLY ✓');
+logger.info('═══════════════════════════════════════════════════');
+logger.info('Mounted API Endpoints:');
+logger.info('  POST   /api/auth/login');
+logger.info('  POST   /api/auth/register');
+logger.info('  POST   /api/auth/refresh');
+logger.info('  POST   /api/auth/logout');
+logger.info('  GET    /api/menu  (public)');
+logger.info('  POST   /api/menu  (protected)');
+logger.info('  GET    /api/halls (public)');
+logger.info('  POST   /api/halls (protected)');
+logger.info('  GET    /api/rooms (public)');
+logger.info('  POST   /api/rooms (protected)');
+logger.info('  GET    /api/orders');
+logger.info('  POST   /api/orders');
+logger.info('  GET    /api/payments');
+logger.info('  POST   /api/payments');
+logger.info('  POST   /api/halls/quote');
+logger.info('  GET    /api/health');
+logger.info('  GET    /api/seed-status');
+logger.info('  GET    /api/seed (with ?key=<seed-key>)');
+logger.info('  POST   /api/seed (with Authorization header)');
+logger.info('═══════════════════════════════════════════════════');
 
 /**
  * @swagger
@@ -515,12 +542,13 @@ if (fs.existsSync(frontendDist)) {
 
 // 404 handler for API routes that don't exist
 app.use('/api', (req, res) => {
-  logger.warn('API route not found', { method: req.method, path: req.path });
+  logger.error(`❌ API route NOT FOUND: ${req.method} ${req.path}`);
+  logger.error(`   Available API routes:  /auth, /menu, /halls, /rooms, /orders, /payments, /health, /seed, /seed-status`);
   res.status(404).json({ 
     error: 'Not Found',
     path: req.path,
     method: req.method,
-    message: 'This API route does not exist'
+    message: 'This API route does not exist. Check /api/routes-info for available endpoints.'
   });
 });
 
