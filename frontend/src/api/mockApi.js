@@ -2,16 +2,19 @@
 
 // Backend API Client with JWT Authentication
 const BACKEND_URL = (() => {
-  // Prefer env var (VITE_API_URL) if set
+  // Prefer env var (VITE_API_URL) if set - this should be the full backend URL
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
-    return envUrl.replace(/\/$/, ''); // Remove trailing slash
+    const cleaned = envUrl.replace(/\/$/, ''); // Remove trailing slash
+    console.log('[mockApi] Using VITE_API_URL from env:', cleaned);
+    return cleaned;
   }
-  // Development or localhost
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return ''; // Relative paths if on same origin (e.g., Render with embedded frontend)
+  // Development or localhost - use relative paths
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3000';
   }
-  return 'http://localhost:3000';
+  // Production with frontend and backend on same origin - use relative paths
+  return '';
 })();
 console.log('[mockApi] BACKEND_URL:', BACKEND_URL);
 const TIMEOUT = 8000;

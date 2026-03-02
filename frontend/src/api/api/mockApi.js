@@ -1,7 +1,17 @@
 "use strict";
 
 // Backend API Client with JWT Authentication
-const BACKEND_URL = (typeof window !== 'undefined' && window.__MEGAPARK_BACKEND_URL) || 'http://localhost:3000';
+const BACKEND_URL = (() => {
+  // Priority: VITE_API_URL env var > window.__MEGAPARK_BACKEND_URL > localhost
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.__MEGAPARK_BACKEND_URL) {
+    return window.__MEGAPARK_BACKEND_URL;
+  }
+  return 'http://localhost:3000';
+})();
 const TIMEOUT = 8000;
 const TOKEN_KEY = '__megapark_jwt__';
 const REFRESH_TOKEN_KEY = '__megapark_refresh__';
