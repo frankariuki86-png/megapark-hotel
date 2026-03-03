@@ -43,30 +43,27 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       const id = `hall-${Date.now()}`;
       
       if (pgClient) {
-        const q = `INSERT INTO halls (id, name, description, capacity, price_per_day, images, amenities, availability)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
-        const values = [
-          id,
-          payload.name, 
-          payload.description||'', 
-          payload.capacity, 
-          payload.pricePerDay, 
-          JSON.stringify(payload.images || []), 
-          JSON.stringify(payload.amenities || []),
-          payload.availability !== false,
-        ];
-        try {
-          const { rows } = await pgClient.query(q, values);
-          return res.status(201).json(rows[0]);
-        } catch (dbErr) {
-          if (/column \"price_per_day\" does not exist/.test(dbErr.message)) {
-            const fallbackQ = `INSERT INTO halls (id, name, description, capacity, price, images, amenities, availability)
-                               VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
-            const { rows } = await pgClient.query(fallbackQ, values);
-            return res.status(201).json(rows[0]);
-          }
-          throw dbErr;
+        const { rows: colRows } = await pgClient.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+        );
+        const existingCols = colRows.map(r => r.column_name);
+
+        const keyMap = { pricePerDay: 'price_per_day' };
+        const dbCols = ['id'];
+        const values = [id];
+
+        for (const [k, v] of Object.entries(payload)) {
+          if (v === undefined) continue;
+          const col = keyMap[k] || k;
+          if (!existingCols.includes(col)) continue;
+          dbCols.push(col);
+          values.push(Array.isArray(v) ? JSON.stringify(v) : v);
         }
+
+        const placeholders = dbCols.map((_, i) => `$${i + 1}`);
+        const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
+        const { rows } = await pgClient.query(q, values);
+        return res.status(201).json(rows[0]);
       }
       const halls = readJSON(hallsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString() };
@@ -89,38 +86,29 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       const payload = HallUpdateSchema.parse(req.body);
       
       if (pgClient) {
+        const { rows: colRows } = await pgClient.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+        );
+        const existingCols = colRows.map(r => r.column_name);
+
+        const keyMap = { pricePerDay: 'price_per_day' };
         const updates = [];
         const values = [];
         let idx = 1;
         for (const [k, v] of Object.entries(payload)) {
-          if (v !== undefined) {
-            const col = k === 'pricePerDay' ? 'price_per_day' : k;
-            if (Array.isArray(v)) {
-              updates.push(`${col} = $${idx++}`);
-              values.push(JSON.stringify(v));
-            } else {
-              updates.push(`${col} = $${idx++}`);
-              values.push(v);
-            }
-          }
+          if (v === undefined) continue;
+          const col = keyMap[k] || k;
+          if (!existingCols.includes(col)) continue;
+
+          updates.push(`${col} = $${idx++}`);
+          values.push(Array.isArray(v) ? JSON.stringify(v) : v);
         }
         if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
         const q = `UPDATE halls SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
         values.push(id);
-        try {
-          const { rows } = await pgClient.query(q, values);
-          if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-          return res.json(rows[0]);
-        } catch (dbErr) {
-          if (/column \"price_per_day\" does not exist/.test(dbErr.message)) {
-            const fallbackUpdates = updates.map(u => u.replace('price_per_day', 'price'));
-            const fallbackQ = `UPDATE halls SET ${fallbackUpdates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
-            const { rows } = await pgClient.query(fallbackQ, values);
-            if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-            return res.json(rows[0]);
-          }
-          throw dbErr;
-        }
+        const { rows } = await pgClient.query(q, values);
+        if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+        return res.json(rows[0]);
       }
       const halls = readJSON(hallsPath, []);
       const idx = halls.findIndex(it => it.id === id);
