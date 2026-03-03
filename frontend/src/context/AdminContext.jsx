@@ -23,10 +23,47 @@ export const AdminProvider = ({ children }) => {
 
   // listen for booking events emitted from cart context (or other parts of app)
   useEffect(() => {
-    const handler = (e) => {
-      const newBooking = e.detail;
-      if (newBooking && newBooking.id) {
-        setBookings(prev => [newBooking, ...prev]);
+    const handler = async (e) => {
+      try {
+        const newBooking = e.detail;
+        if (newBooking && newBooking.id) {
+          // optimistic UI update immediately
+          setBookings(prev => [newBooking, ...prev]);
+        }
+
+        // attempt to refresh canonical bookings from backend so admin sees persisted data
+        try {
+          const remoteBookings = await fetchBookings();
+          if (remoteBookings && remoteBookings.length) {
+            const normalized = remoteBookings.map(b => {
+              // booking data may be nested under booking_data or bookingData
+              const bd = b.booking_data || b.bookingData || {};
+              const roomId = bd.roomId || bd.room_id || b.room_id || b.roomId || '';
+              const room = rooms.find(r => r.id === roomId) || {};
+              return {
+                id: b.id,
+                roomId: roomId,
+                roomName: room.name || bd.roomName || bd.room || b.roomName || '',
+                guestName: b.customer_name || b.customerName || '',
+                email: b.customer_email || b.customerEmail || '',
+                phone: b.customer_phone || b.customerPhone || '',
+                checkIn: bd.checkIn || bd.check_in || b.check_in || b.checkIn || '',
+                checkOut: bd.checkOut || bd.check_out || b.check_out || b.checkOut || '',
+                nights: bd.nights || b.nights || 0,
+                guests: bd.guests || bd.guestCount || b.guests || 0,
+                totalPrice: b.total || b.total_price || b.totalPrice || 0,
+                status: b.status || '',
+                paymentStatus: b.payment_status || b.paymentStatus || '' ,
+                createdAt: b.created_at || b.createdAt || ''
+              };
+            });
+            setBookings(normalized);
+          }
+        } catch (fetchErr) {
+          console.warn('[AdminContext] Could not refresh bookings after event:', fetchErr.message || fetchErr);
+        }
+      } catch (err) {
+        console.warn('[AdminContext] new-booking handler error', err.message || err);
       }
     };
     window.addEventListener('new-booking', handler);
