@@ -122,7 +122,7 @@ const Checkout = () => {
       setIsProcessing(false);
   };
 
-  const handlePaymentSuccess = (paymentData) => {
+  const handlePaymentSuccess = async (paymentData) => {
       setIsProcessing(true);
     // place menu order with payment
     const orderData = {
