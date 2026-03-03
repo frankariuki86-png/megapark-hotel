@@ -125,12 +125,20 @@ export const roomsService = {
   },
 
   async create(room) {
+    // normalize legacy price field and ensure numeric types
+    const payload = { ...room };
+    if (payload.price !== undefined && payload.pricePerNight === undefined) {
+      payload.pricePerNight = parseFloat(payload.price);
+      delete payload.price;
+    }
+    if (payload.pricePerNight !== undefined) payload.pricePerNight = Number(payload.pricePerNight);
+
     const url = `${API_BASE_URL}/rooms`;
-    console.log('[roomsService.create] Creating at:', url, 'data:', room);
+    console.log('[roomsService.create] Creating at:', url, 'data:', payload);
     const res = await fetch(url, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(room)
+      body: JSON.stringify(payload)
     });
     console.log('[roomsService.create] Response status:', res.status);
     if (!res.ok) {
@@ -144,12 +152,19 @@ export const roomsService = {
   },
 
   async update(id, room) {
+    const payload = { ...room };
+    if (payload.price !== undefined && payload.pricePerNight === undefined) {
+      payload.pricePerNight = parseFloat(payload.price);
+      delete payload.price;
+    }
+    if (payload.pricePerNight !== undefined) payload.pricePerNight = Number(payload.pricePerNight);
+
     const url = `${API_BASE_URL}/rooms/${id}`;
-    console.log('[roomsService.update] Updating at:', url, 'data:', room);
+    console.log('[roomsService.update] Updating at:', url, 'data:', payload);
     const res = await fetch(url, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(room)
+      body: JSON.stringify(payload)
     });
     console.log('[roomsService.update] Response status:', res.status);
     if (!res.ok) {
@@ -201,12 +216,19 @@ export const hallsService = {
   },
 
   async create(hall) {
+    const payload = { ...hall };
+    if (payload.price !== undefined && payload.pricePerDay === undefined) {
+      payload.pricePerDay = parseFloat(payload.price);
+      delete payload.price;
+    }
+    if (payload.pricePerDay !== undefined) payload.pricePerDay = Number(payload.pricePerDay);
+
     const url = `${API_BASE_URL}/halls`;
-    console.log('[hallsService.create] Creating at:', url, 'data:', hall);
+    console.log('[hallsService.create] Creating at:', url, 'data:', payload);
     const res = await fetch(url, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(hall)
+      body: JSON.stringify(payload)
     });
     console.log('[hallsService.create] Response status:', res.status);
     if (!res.ok) {
@@ -220,12 +242,19 @@ export const hallsService = {
   },
 
   async update(id, hall) {
+    const payload = { ...hall };
+    if (payload.price !== undefined && payload.pricePerDay === undefined) {
+      payload.pricePerDay = parseFloat(payload.price);
+      delete payload.price;
+    }
+    if (payload.pricePerDay !== undefined) payload.pricePerDay = Number(payload.pricePerDay);
+
     const url = `${API_BASE_URL}/halls/${id}`;
-    console.log('[hallsService.update] Updating at:', url, 'data:', hall);
+    console.log('[hallsService.update] Updating at:', url, 'data:', payload);
     const res = await fetch(url, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(hall)
+      body: JSON.stringify(payload)
     });
     console.log('[hallsService.update] Response status:', res.status);
     if (!res.ok) {
