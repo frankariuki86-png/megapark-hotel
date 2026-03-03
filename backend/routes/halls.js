@@ -21,6 +21,19 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
         try {
           const { rows } = await pgClient.query('SELECT * FROM halls ORDER BY created_at DESC');
           logger.info('GET /api/halls - DB query successful, rows:', rows.length);
+
+          // merge JSON fallback items that aren't in DB yet
+          const jsonHalls = readJSON(hallsPath, []);
+          if (jsonHalls && jsonHalls.length) {
+            // only include those not already returned by DB (by id)
+            const dbIds = new Set(rows.map(r => r.id));
+            const extra = jsonHalls.filter(h => !dbIds.has(h.id));
+            if (extra.length) {
+              logger.info('GET /api/halls - adding', extra.length, 'fallback halls to DB result');
+              rows.unshift(...extra);
+            }
+          }
+
           return res.json(rows);
         } catch (dbErr) {
           logger.warn('GET /api/halls - DB query failed, falling back to JSON:', dbErr.message);
