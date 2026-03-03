@@ -39,44 +39,53 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   router.post('/', authenticate, async (req, res) => {
     try {
       const payload = HallCreateSchema.parse(req.body);
-      
       const id = `hall-${Date.now()}`;
       
+      let useDB = false;
       if (pgClient) {
         try {
+          // Check if halls table exists and has columns
           const { rows: colRows } = await pgClient.query(
-            `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+            `SELECT column_name FROM information_schema.columns WHERE table_name='halls' LIMIT 1`
           );
-          const existingCols = colRows.map(r => r.column_name);
+          useDB = colRows && colRows.length > 0;
+          if (useDB) {
+            // Fetch all columns for building dynamic INSERT
+            const { rows: allCols } = await pgClient.query(
+              `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+            );
+            const existingCols = allCols.map(r => r.column_name);
+            const keyMap = {};
+            if (existingCols.includes('price_per_day')) {
+              keyMap.pricePerDay = 'price_per_day';
+            } else if (existingCols.includes('price')) {
+              keyMap.pricePerDay = 'price';
+            }
 
-          const keyMap = {};
-          if (existingCols.includes('price_per_day')) {
-            keyMap.pricePerDay = 'price_per_day';
-          } else if (existingCols.includes('price')) {
-            keyMap.pricePerDay = 'price';
+            const dbCols = ['id'];
+            const values = [id];
+            for (const [k, v] of Object.entries(payload)) {
+              if (v === undefined) continue;
+              const col = keyMap[k] || k;
+              if (!existingCols.includes(col)) continue;
+              dbCols.push(col);
+              values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+            }
+
+            const placeholders = dbCols.map((_, i) => `$${i + 1}`);
+            const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
+            const { rows } = await pgClient.query(q, values);
+            if (rows && rows[0]) {
+              return res.status(201).json(rows[0]);
+            }
           }
-          // name, description, capacity, etc. use same name if present
-
-          const dbCols = ['id'];
-          const values = [id];
-
-          for (const [k, v] of Object.entries(payload)) {
-            if (v === undefined) continue;
-            const col = keyMap[k] || k;
-            if (!existingCols.includes(col)) continue;
-            dbCols.push(col);
-            values.push(Array.isArray(v) ? JSON.stringify(v) : v);
-          }
-
-          const placeholders = dbCols.map((_, i) => `$${i + 1}`);
-          const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
-          const { rows } = await pgClient.query(q, values);
-          return res.status(201).json(rows[0]);
         } catch (dbErr) {
-          logger.warn('POST /api/halls DB error, falling back to JSON store', dbErr.message);
-          // continue to json fallback below
+          logger.warn('POST /api/halls DB error:', dbErr.message);
+          useDB = false; // Fall back to JSON
         }
       }
+      
+      // JSON fallback
       const halls = readJSON(hallsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString() };
       halls.unshift(created);
@@ -86,8 +95,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       if (e.name === 'ZodError') {
         return res.status(400).json({ error: 'Validation error', details: e.errors });
       }
-      logger.error('POST /api/halls error', e.message);
-      res.status(500).json({ error: 'server_error' });
+      logger.error('POST /api/halls error', e.message, e.stack);
+      return res.status(500).json({ error: 'server_error' });
+    }
+  });
     }
   });
 
@@ -97,41 +108,60 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       const id = req.params.id;
       const payload = HallUpdateSchema.parse(req.body);
       
+      let useDB = false;
       if (pgClient) {
         try {
-          const { rows: colRows } = await pgClient.query(
-            `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+          // Check if halls table exists
+          const { rows: checkRows } = await pgClient.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name='halls' LIMIT 1`
           );
-          const existingCols = colRows.map(r => r.column_name);
+          useDB = checkRows && checkRows.length > 0;
+          
+          if (useDB) {
+            // Fetch all columns
+            const { rows: allCols } = await pgClient.query(
+              `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+            );
+            const existingCols = allCols.map(r => r.column_name);
+            const keyMap = {};
+            if (existingCols.includes('price_per_day')) {
+              keyMap.pricePerDay = 'price_per_day';
+            } else if (existingCols.includes('price')) {
+              keyMap.pricePerDay = 'price';
+            }
 
-          const keyMap = {};
-          if (existingCols.includes('price_per_day')) {
-            keyMap.pricePerDay = 'price_per_day';
-          } else if (existingCols.includes('price')) {
-            keyMap.pricePerDay = 'price';
-          }
-          const updates = [];
-          const values = [];
-          let idx = 1;
-          for (const [k, v] of Object.entries(payload)) {
-            if (v === undefined) continue;
-            const col = keyMap[k] || k;
-            if (!existingCols.includes(col)) continue;
+            const updates = [];
+            const values = [];
+            let idx = 1;
+            for (const [k, v] of Object.entries(payload)) {
+              if (v === undefined) continue;
+              const col = keyMap[k] || k;
+              if (!existingCols.includes(col)) continue;
+              updates.push(`${col} = $${idx++}`);
+              values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+            }
 
-            updates.push(`${col} = $${idx++}`);
-            values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+            if (updates.length > 0) {
+              const q = `UPDATE halls SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+              values.push(id);
+              const { rows } = await pgClient.query(q, values);
+              if (rows && rows[0]) {
+                return res.json(rows[0]);
+              } else if (rows && rows.length === 0) {
+                // Hall not found in DB, fall back to JSON
+                useDB = false;
+              }
+            } else {
+              return res.status(400).json({ error: 'no_updates' });
+            }
           }
-          if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
-          const q = `UPDATE halls SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
-          values.push(id);
-          const { rows } = await pgClient.query(q, values);
-          if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-          return res.json(rows[0]);
         } catch (dbErr) {
-          logger.warn('PUT /api/halls DB error, falling back to JSON store', dbErr.message);
-          // drop through to file-based update below
+          logger.warn('PUT /api/halls DB error:', dbErr.message);
+          useDB = false;
         }
       }
+      
+      // JSON fallback
       const halls = readJSON(hallsPath, []);
       const idx = halls.findIndex(it => it.id === id);
       if (idx === -1) return res.status(404).json({ error: 'not_found' });
@@ -142,8 +172,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       if (e.name === 'ZodError') {
         return res.status(400).json({ error: 'Validation error', details: e.errors });
       }
-      logger.error('PUT /api/halls/:id error', e.message);
-      res.status(500).json({ error: 'server_error' });
+      logger.error('PUT /api/halls/:id error', e.message, e.stack);
+      return res.status(500).json({ error: 'server_error' });
     }
   });
 
