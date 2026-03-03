@@ -23,7 +23,31 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
   // POST - create booking (public)
   router.post('/', async (req, res) => {
     try {
-      const parsed = BookingCreateSchema.safeParse(req.body);
+      // normalize legacy flat booking properties (roomId, checkInDate, price, etc.)
+      const incoming = { ...req.body };
+      // ensure bookingData object exists
+      if (!incoming.bookingData) {
+        incoming.bookingData = {};
+        // migrate known fields into bookingData
+        if (incoming.roomId !== undefined) { incoming.bookingData.roomId = incoming.roomId; delete incoming.roomId; }
+        if (incoming.hallId !== undefined) { incoming.bookingData.hallId = incoming.hallId; delete incoming.hallId; }
+        if (incoming.checkInDate !== undefined) { incoming.bookingData.checkIn = incoming.checkInDate; delete incoming.checkInDate; }
+        if (incoming.checkOutDate !== undefined) { incoming.bookingData.checkOut = incoming.checkOutDate; delete incoming.checkOutDate; }
+        if (incoming.checkIn !== undefined) { incoming.bookingData.checkIn = incoming.checkIn; delete incoming.checkIn; }
+        if (incoming.checkOut !== undefined) { incoming.bookingData.checkOut = incoming.checkOut; delete incoming.checkOut; }
+        if (incoming.guests !== undefined) { incoming.bookingData.guests = incoming.guests; delete incoming.guests; }
+        if (incoming.guestCount !== undefined) { incoming.bookingData.guests = incoming.guestCount; delete incoming.guestCount; }
+        if (incoming.eventDate !== undefined) { incoming.bookingData.eventDate = incoming.eventDate; delete incoming.eventDate; }
+        if (incoming.eventTime !== undefined) { incoming.bookingData.eventTime = incoming.eventTime; delete incoming.eventTime; }
+        if (incoming.specialRequests !== undefined) { incoming.bookingData.specialRequests = incoming.specialRequests; delete incoming.specialRequests; }
+      }
+      // ensure total field present
+      if (incoming.total === undefined && incoming.price !== undefined) {
+        incoming.total = incoming.price;
+        delete incoming.price;
+      }
+
+      const parsed = BookingCreateSchema.safeParse(incoming);
       if (!parsed.success) {
         return res.status(400).json({ 
           error: 'Validation error', 
