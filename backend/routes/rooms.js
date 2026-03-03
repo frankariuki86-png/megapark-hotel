@@ -33,14 +33,25 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             }
           }
 
-          return res.json(rows);
+          // ensure all rooms have availability set to true
+          const roomsWithAvailability = rows.map(r => ({
+            ...r,
+            availability: r.availability !== undefined ? r.availability : true
+          }));
+
+          return res.json(roomsWithAvailability);
         } catch (dbErr) {
           logger.warn('GET /api/rooms - DB query failed, falling back to JSON:', dbErr.message);
         }
       }
       const rooms = readJSON(roomsPath, []);
       logger.info('GET /api/rooms - Returning', rooms.length, 'rooms from JSON file');
-      return res.json(rooms);
+      // ensure all rooms have availability set to true
+      const roomsWithAvailability = rooms.map(r => ({
+        ...r,
+        availability: r.availability !== undefined ? r.availability : true
+      }));
+      return res.json(roomsWithAvailability);
     } catch (e) {
       logger.error('GET /api/rooms error', e.message);
       res.status(500).json({ error: 'server_error' });
@@ -93,10 +104,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         const placeholders = dbCols.map((_, i) => `$${i + 1}`);
         const q = `INSERT INTO rooms (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const { rows } = await pgClient.query(q, values);
-        return res.status(201).json(rows[0]);
+        const room = rows[0];
+        return res.status(201).json({
+          ...room,
+          availability: room.availability !== undefined ? room.availability : true
+        });
       }
       const rooms = readJSON(roomsPath, []);
-      const created = { id, ...payload, createdAt: new Date().toISOString() };
+      const created = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
       rooms.unshift(created);
       writeJSON(roomsPath, rooms);
       return res.status(201).json(created);
@@ -164,7 +179,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
               // not in DB, fall back to JSON below
               useDB = false;
             } else {
-              return res.json(rows[0]);
+              return res.json({
+                ...rows[0],
+                availability: rows[0].availability !== undefined ? rows[0].availability : true
+              });
             }
           }
         } catch (dbErr) {
@@ -175,9 +193,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       const rooms = readJSON(roomsPath, []);
       const idx = rooms.findIndex(it => it.id === id);
       if (idx === -1) return res.status(404).json({ error: 'not_found' });
-      rooms[idx] = { ...rooms[idx], ...payload, updatedAt: new Date().toISOString() };
+      const updated = { ...rooms[idx], ...payload, updatedAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : (rooms[idx].availability !== undefined ? rooms[idx].availability : true) };
+      rooms[idx] = updated;
       writeJSON(roomsPath, rooms);
-      return res.json(rooms[idx]);
+      return res.json(updated);
     } catch (e) {
       if (e.name === 'ZodError') {
         return res.status(400).json({ error: 'Validation error', details: e.errors });

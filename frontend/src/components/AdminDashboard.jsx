@@ -5,12 +5,13 @@ import MenuManagement from './MenuManagement';
 import RoomsManagement from './RoomsManagement';
 import HallsManagement from './HallsManagement';
 import StaffManagement from './StaffManagement';
+import RequestsManagement from './RequestsManagement';
 import '../styles/admin-dashboard.css';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useUser();
-  const [activeTab, setActiveTab] = useState('menu');
+  const [activeTab, setActiveTab] = useState('requests');
 
   // Check if user is admin
   if (!user || user.role !== 'admin') {
@@ -46,6 +47,12 @@ const AdminDashboard = () => {
       {/* Navigation Tabs */}
       <nav className="admin-nav">
         <button 
+          className={`admin-nav-btn ${activeTab === 'requests' ? 'active' : ''}`}
+          onClick={() => setActiveTab('requests')}
+        >
+          📋 Requests
+        </button>
+        <button 
           className={`admin-nav-btn ${activeTab === 'menu' ? 'active' : ''}`}
           onClick={() => setActiveTab('menu')}
         >
@@ -73,6 +80,7 @@ const AdminDashboard = () => {
 
       {/* Content Area */}
       <main className="admin-content">
+        {activeTab === 'requests' && <RequestsManagement />}
         {activeTab === 'menu' && <MenuManagement />}
         {activeTab === 'rooms' && <RoomsManagement />}
         {activeTab === 'halls' && <HallsManagement />}

@@ -335,3 +335,81 @@ export const staffService = {
     return res.json();
   }
 };
+
+// BOOKINGS MANAGEMENT
+export const bookingsService = {
+  async getAll() {
+    const url = `${API_BASE_URL}/bookings`;
+    console.log('[bookingsService.getAll] Fetching from:', url);
+    const res = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    console.log('[bookingsService.getAll] Response status:', res.status);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      console.error('[bookingsService.getAll] Error:', error);
+      throw new Error(error.error || 'Failed to fetch bookings');
+    }
+    const data = await res.json();
+    console.log('[bookingsService.getAll] Success, items:', data.length);
+    return data;
+  },
+
+  async update(id, bookingData) {
+    const url = `${API_BASE_URL}/bookings/${id}`;
+    console.log('[bookingsService.update] Updating at:', url, 'data:', bookingData);
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(bookingData)
+    });
+    console.log('[bookingsService.update] Response status:', res.status);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      console.error('[bookingsService.update] Error:', error);
+      throw new Error(error.error || 'Failed to update booking');
+    }
+    const data = await res.json();
+    console.log('[bookingsService.update] Success:', data);
+    return data;
+  }
+};
+
+// ORDERS MANAGEMENT
+export const ordersService = {
+  async getAll() {
+    const url = `${API_BASE_URL}/orders`;
+    console.log('[ordersService.getAll] Fetching from:', url);
+    const res = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    console.log('[ordersService.getAll] Response status:', res.status);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      console.error('[ordersService.getAll] Error:', error);
+      throw new Error(error.error || 'Failed to fetch orders');
+    }
+    const data = await res.json();
+    console.log('[ordersService.getAll] Success, items:', data.length);
+    return data;
+  },
+
+  async update(id, orderData) {
+    const url = `${API_BASE_URL}/orders/${id}`;
+    console.log('[ordersService.update] Updating at:', url, 'data:', orderData);
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(orderData)
+    });
+    console.log('[ordersService.update] Response status:', res.status);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      console.error('[ordersService.update] Error:', error);
+      throw new Error(error.error || 'Failed to update order');
+    }
+    const data = await res.json();
+    console.log('[ordersService.update] Success:', data);
+    return data;
+  }
+};
