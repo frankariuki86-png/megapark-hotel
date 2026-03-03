@@ -43,34 +43,39 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       const id = `hall-${Date.now()}`;
       
       if (pgClient) {
-        const { rows: colRows } = await pgClient.query(
-          `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
-        );
-        const existingCols = colRows.map(r => r.column_name);
+        try {
+          const { rows: colRows } = await pgClient.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+          );
+          const existingCols = colRows.map(r => r.column_name);
 
-        const keyMap = {};
-        if (existingCols.includes('price_per_day')) {
-          keyMap.pricePerDay = 'price_per_day';
-        } else if (existingCols.includes('price')) {
-          keyMap.pricePerDay = 'price';
+          const keyMap = {};
+          if (existingCols.includes('price_per_day')) {
+            keyMap.pricePerDay = 'price_per_day';
+          } else if (existingCols.includes('price')) {
+            keyMap.pricePerDay = 'price';
+          }
+          // name, description, capacity, etc. use same name if present
+
+          const dbCols = ['id'];
+          const values = [id];
+
+          for (const [k, v] of Object.entries(payload)) {
+            if (v === undefined) continue;
+            const col = keyMap[k] || k;
+            if (!existingCols.includes(col)) continue;
+            dbCols.push(col);
+            values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+          }
+
+          const placeholders = dbCols.map((_, i) => `$${i + 1}`);
+          const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
+          const { rows } = await pgClient.query(q, values);
+          return res.status(201).json(rows[0]);
+        } catch (dbErr) {
+          logger.warn('POST /api/halls DB error, falling back to JSON store', dbErr.message);
+          // continue to json fallback below
         }
-        // name, description, capacity, etc. use same name if present
-
-        const dbCols = ['id'];
-        const values = [id];
-
-        for (const [k, v] of Object.entries(payload)) {
-          if (v === undefined) continue;
-          const col = keyMap[k] || k;
-          if (!existingCols.includes(col)) continue;
-          dbCols.push(col);
-          values.push(Array.isArray(v) ? JSON.stringify(v) : v);
-        }
-
-        const placeholders = dbCols.map((_, i) => `$${i + 1}`);
-        const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
-        const { rows } = await pgClient.query(q, values);
-        return res.status(201).json(rows[0]);
       }
       const halls = readJSON(hallsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString() };
@@ -93,34 +98,39 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       const payload = HallUpdateSchema.parse(req.body);
       
       if (pgClient) {
-        const { rows: colRows } = await pgClient.query(
-          `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
-        );
-        const existingCols = colRows.map(r => r.column_name);
+        try {
+          const { rows: colRows } = await pgClient.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name='halls'`
+          );
+          const existingCols = colRows.map(r => r.column_name);
 
-        const keyMap = {};
-        if (existingCols.includes('price_per_day')) {
-          keyMap.pricePerDay = 'price_per_day';
-        } else if (existingCols.includes('price')) {
-          keyMap.pricePerDay = 'price';
-        }
-        const updates = [];
-        const values = [];
-        let idx = 1;
-        for (const [k, v] of Object.entries(payload)) {
-          if (v === undefined) continue;
-          const col = keyMap[k] || k;
-          if (!existingCols.includes(col)) continue;
+          const keyMap = {};
+          if (existingCols.includes('price_per_day')) {
+            keyMap.pricePerDay = 'price_per_day';
+          } else if (existingCols.includes('price')) {
+            keyMap.pricePerDay = 'price';
+          }
+          const updates = [];
+          const values = [];
+          let idx = 1;
+          for (const [k, v] of Object.entries(payload)) {
+            if (v === undefined) continue;
+            const col = keyMap[k] || k;
+            if (!existingCols.includes(col)) continue;
 
-          updates.push(`${col} = $${idx++}`);
-          values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+            updates.push(`${col} = $${idx++}`);
+            values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+          }
+          if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
+          const q = `UPDATE halls SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+          values.push(id);
+          const { rows } = await pgClient.query(q, values);
+          if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+          return res.json(rows[0]);
+        } catch (dbErr) {
+          logger.warn('PUT /api/halls DB error, falling back to JSON store', dbErr.message);
+          // drop through to file-based update below
         }
-        if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
-        const q = `UPDATE halls SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
-        values.push(id);
-        const { rows } = await pgClient.query(q, values);
-        if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-        return res.json(rows[0]);
       }
       const halls = readJSON(hallsPath, []);
       const idx = halls.findIndex(it => it.id === id);
