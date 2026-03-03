@@ -100,45 +100,45 @@ const seedData = {
   ],
   halls: [
     {
-      name: 'Main Convention Hall',
-      description: 'Spacious hall suitable for conferences and large events',
+      name: 'Grand Ballroom',
+      description: 'Spacious ballroom perfect for weddings and conferences',
       capacity: 500,
-      price_per_day: 20000,
-      amenities: ['projector','stage','sound system'],
-      images: [],
+      price_per_day: 50000,
+      amenities: JSON.stringify(['Air Conditioning', 'Sound System', 'Projector', 'Catering Facilities']),
+      images: JSON.stringify([]),
       availability: true
     },
     {
-      name: 'Banquet Hall',
-      description: 'Elegant hall for weddings and banquets',
-      capacity: 300,
+      name: 'Conference Room',
+      description: 'Modern meeting space with technology',
+      capacity: 100,
       price_per_day: 15000,
-      amenities: ['catering','decor'],
-      images: [],
+      amenities: JSON.stringify(['WiFi', 'Video Conference Setup', 'Whiteboard']),
+      images: JSON.stringify([]),
       availability: true
     }
   ],
   rooms: [
     {
       room_number: '101',
-      name: 'Single Room',
-      type: 'single',
-      description: 'Cozy single occupancy room',
+      name: 'Standard Room',
+      type: 'standard',
+      description: 'Comfortable standard room with essential amenities',
       price_per_night: 5000,
-      capacity: 1,
-      amenities: ['wifi'],
-      images: [],
+      capacity: 2,
+      amenities: JSON.stringify(['Free WiFi', 'Air Conditioning', 'En-suite Bathroom']),
+      images: JSON.stringify([]),
       availability: true
     },
     {
       room_number: '201',
-      name: 'Double Room',
-      type: 'double',
-      description: 'Room for two guests',
+      name: 'Deluxe Room',
+      type: 'deluxe',
+      description: 'Spacious deluxe room with premium amenities',
       price_per_night: 8000,
-      capacity: 2,
-      amenities: ['wifi','air conditioning'],
-      images: [],
+      capacity: 3,
+      amenities: JSON.stringify(['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Mini Bar', 'Safe']),
+      images: JSON.stringify([]),
       availability: true
     }
   ]
@@ -197,15 +197,19 @@ const seed = async () => {
     // Seed rooms
     console.log('Seeding rooms...');
     for (const room of seedData.rooms) {
-      const q = `INSERT INTO rooms (id, name, description, price, capacity, amenities)
-                 VALUES ($1,$2,$3,$4,$5,$6)`;
+      const q = `INSERT INTO rooms (id, room_number, name, type, description, price_per_night, images, amenities, capacity, availability)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`;
       await client.query(q, [
         uuidv4(),
+        room.room_number,
         room.name,
+        room.type,
         room.description,
         room.price_per_night,
+        room.images,
+        room.amenities,
         room.capacity,
-        room.amenities
+        room.availability
       ]);
     }
     console.log(`✓ Seeded ${seedData.rooms.length} rooms`);

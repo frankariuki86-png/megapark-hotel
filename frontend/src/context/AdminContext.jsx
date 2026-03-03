@@ -17,76 +17,9 @@ export const AdminProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [rooms, setRooms] = useState([
-    {
-      id: 'room-standard',
-      name: 'Standard Room',
-      price: 5000,
-      capacity: 2,
-      amenities: ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Flat-screen TV', 'Work Desk'],
-      description: 'Comfortable and affordable accommodation perfect for single travelers or couples.',
-      status: 'available',
-      blockedDates: [],
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'room-deluxe',
-      name: 'Deluxe Room',
-      price: 8000,
-      capacity: 3,
-      amenities: ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Flat-screen TV', 'Mini Bar', 'Safe', 'Bathrobe & Slippers'],
-      description: 'Spacious room with premium amenities and stunning views of the resort grounds.',
-      status: 'available',
-      blockedDates: [],
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'room-executive',
-      name: 'Executive Suite',
-      price: 12000,
-      capacity: 4,
-      amenities: ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom', 'Smart TV', 'Mini Bar', 'Safe', 'Bathrobe & Slippers', 'Jacuzzi Tub', 'Living Area', 'Premium Toiletries'],
-      description: 'Luxurious suite with separate living area, premium amenities, and personalized services.',
-      status: 'available',
-      blockedDates: [],
-      createdAt: new Date().toISOString()
-    }
-  ]);
+  const [rooms, setRooms] = useState([]);
 
-  const [bookings, setBookings] = useState([
-    {
-      id: 'BOOK-001',
-      roomId: 'room-standard',
-      roomName: 'Standard Room',
-      guestName: 'John Doe',
-      email: 'john@example.com',
-      phone: '+254712345678',
-      checkIn: '2024-02-15',
-      checkOut: '2024-02-18',
-      nights: 3,
-      guests: 2,
-      totalPrice: 15000,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      createdAt: '2024-02-10'
-    },
-    {
-      id: 'BOOK-002',
-      roomId: 'room-deluxe',
-      roomName: 'Deluxe Room',
-      guestName: 'Sarah Smith',
-      email: 'sarah@example.com',
-      phone: '+254798765432',
-      checkIn: '2024-02-20',
-      checkOut: '2024-02-25',
-      nights: 5,
-      guests: 3,
-      totalPrice: 40000,
-      status: 'pending',
-      paymentStatus: 'pending',
-      createdAt: '2024-02-11'
-    }
-  ]);
+  const [bookings, setBookings] = useState([]);
 
   // listen for booking events emitted from cart context (or other parts of app)
   useEffect(() => {
@@ -100,96 +33,9 @@ export const AdminProvider = ({ children }) => {
     return () => window.removeEventListener('new-booking', handler);
   }, []);
 
-  const [events, setEvents] = useState([
-    {
-      id: 'EVENT-001',
-      type: 'Wedding',
-      package: 'Premium',
-      clientName: 'Michael Brown',
-      email: 'michael@example.com',
-      phone: '+254701234567',
-      eventDate: '2024-03-15',
-      guests: 150,
-      totalPrice: 120000,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      notes: 'Outdoor ceremony with reception',
-      createdAt: '2024-02-05'
-    },
-    {
-      id: 'EVENT-002',
-      type: 'Conference',
-      package: 'Standard',
-      clientName: 'Tech Solutions Ltd',
-      email: 'info@techsolutions.com',
-      phone: '+254723456789',
-      eventDate: '2024-03-20',
-      guests: 200,
-      totalPrice: 60000,
-      status: 'pending',
-      paymentStatus: 'pending',
-      notes: '2-day conference with lunch and coffee breaks',
-      createdAt: '2024-02-08'
-    }
-  ]);
+  const [events, setEvents] = useState([]);
 
-  const [menuItems, setMenuItems] = useState([
-    {
-      id: 'menu-001',
-      name: 'Nyama Choma',
-      description: 'Grilled meat with local spices and vegetables',
-      category: 'mains',
-      price: 850,
-      image: '',
-      availability: true,
-      preparationTime: 30,
-      createdAt: '2024-01-01'
-    },
-    {
-      id: 'menu-002',
-      name: 'Ugali with Sukuma Wiki',
-      description: 'Traditional maize meal with sautéed greens',
-      category: 'mains',
-      price: 350,
-      image: '',
-      availability: true,
-      preparationTime: 15,
-      createdAt: '2024-01-01'
-    },
-    {
-      id: 'menu-003',
-      name: 'Samosas',
-      description: 'Crispy pastry with meat or vegetable filling',
-      category: 'appetizers',
-      price: 200,
-      image: '',
-      availability: true,
-      preparationTime: 10,
-      createdAt: '2024-01-01'
-    },
-    {
-      id: 'menu-004',
-      name: 'Chapati',
-      description: 'Soft flatbread',
-      category: 'sides',
-      price: 100,
-      image: '',
-      availability: true,
-      preparationTime: 8,
-      createdAt: '2024-01-01'
-    },
-    {
-      id: 'menu-005',
-      name: 'Mango Juice',
-      description: 'Fresh mango juice',
-      category: 'drinks',
-      price: 250,
-      image: '',
-      availability: true,
-      preparationTime: 5,
-      createdAt: '2024-01-01'
-    }
-  ]);
+  const [menuItems, setMenuItems] = useState([]);
 
   const [foodOrders, setFoodOrders] = useState([
     {
@@ -238,30 +84,7 @@ export const AdminProvider = ({ children }) => {
     }
   ]);
 
-  const [halls, setHalls] = useState([
-    {
-      id: 'hall-001',
-      name: 'Grand Ballroom',
-      description: 'Spacious hall perfect for weddings, conferences, and large events',
-      capacity: 500,
-      pricePerDay: 50000,
-      images: [],
-      amenities: ['Air Conditioning', 'Sound System', 'Projector', 'Catering Facilities', 'Wheelchair Accessible'],
-      availability: true,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'hall-002',
-      name: 'Conference Room',
-      description: 'Modern meeting space with latest technology for corporate events',
-      capacity: 100,
-      pricePerDay: 15000,
-      images: [],
-      amenities: ['WiFi', 'Video Conference Setup', 'Whiteboard', 'LED Screen'],
-      availability: true,
-      createdAt: new Date().toISOString()
-    }
-  ]);
+  const [halls, setHalls] = useState([]);
 
   const [halls_state, setHallsState] = useState({
     loading: false,

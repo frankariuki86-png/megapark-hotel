@@ -50,36 +50,50 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Rooms Table (for future bookings)
+-- Rooms Table (for hotel room bookings)
 CREATE TABLE IF NOT EXISTS rooms (
   id VARCHAR(64) PRIMARY KEY,
+  room_number VARCHAR(50) NOT NULL,
   name VARCHAR(255) NOT NULL,
+  type VARCHAR(50) NOT NULL DEFAULT 'standard' CHECK (type IN ('standard', 'double', 'deluxe', 'suite', 'executive')),
   description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  capacity INT NOT NULL,
+  price_per_night DECIMAL(10, 2) NOT NULL,
+  images JSON NOT NULL DEFAULT '[]',
   amenities JSON NOT NULL DEFAULT '[]',
-  status VARCHAR(50) NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'maintenance')),
+  capacity INT NOT NULL DEFAULT 2,
+  availability BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bookings Table (for future reservations)
+-- Halls Table (for event bookings)
+CREATE TABLE IF NOT EXISTS halls (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  capacity INT NOT NULL DEFAULT 0,
+  price_per_day DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  images JSON NOT NULL DEFAULT '[]',
+  amenities JSON NOT NULL DEFAULT '[]',
+  availability BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bookings Table (room and hall reservations)
 CREATE TABLE IF NOT EXISTS bookings (
   id VARCHAR(64) PRIMARY KEY,
-  room_id VARCHAR(64) NOT NULL,
-  guest_name VARCHAR(255) NOT NULL,
-  email VARCHAR(255),
-  phone VARCHAR(20),
-  check_in DATE NOT NULL,
-  check_out DATE NOT NULL,
-  nights INT NOT NULL,
-  guests INT NOT NULL,
-  total_price DECIMAL(10, 2) NOT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled')),
-  payment_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed')),
+  customer_name VARCHAR(255) NOT NULL,
+  customer_email VARCHAR(255),
+  customer_phone VARCHAR(20),
+  booking_type VARCHAR(50) NOT NULL DEFAULT 'room' CHECK (booking_type IN ('room', 'hall')),
+  booking_data JSON NOT NULL DEFAULT '{}',
+  total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  status VARCHAR(50) NOT NULL DEFAULT 'booked' CHECK (status IN ('booked', 'confirmed', 'cancelled', 'completed')),
+  payment_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded')),
+  payment_data JSON,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Events Table (for future event bookings)
@@ -113,11 +127,14 @@ CREATE INDEX IF NOT EXISTS idx_orders_order_date ON food_orders(order_date);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
-CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
-CREATE INDEX IF NOT EXISTS idx_rooms_price ON rooms(price);
+CREATE INDEX IF NOT EXISTS idx_rooms_availability ON rooms(availability);
+CREATE INDEX IF NOT EXISTS idx_rooms_price_per_night ON rooms(price_per_night);
 
-CREATE INDEX IF NOT EXISTS idx_bookings_guest ON bookings(guest_name);
-CREATE INDEX IF NOT EXISTS idx_bookings_check_in ON bookings(check_in);
+CREATE INDEX IF NOT EXISTS idx_halls_availability ON halls(availability);
+CREATE INDEX IF NOT EXISTS idx_halls_price_per_day ON halls(price_per_day);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_customer ON bookings(customer_name);
+CREATE INDEX IF NOT EXISTS idx_bookings_type ON bookings(booking_type);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 
 CREATE INDEX IF NOT EXISTS idx_events_client ON events(client_name);
