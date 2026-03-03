@@ -68,7 +68,7 @@ export const AdminProvider = ({ children }) => {
     };
     window.addEventListener('new-booking', handler);
     return () => window.removeEventListener('new-booking', handler);
-  }, []);
+  }, [rooms]);
 
   const [events, setEvents] = useState([]);
 
