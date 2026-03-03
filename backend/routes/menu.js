@@ -45,8 +45,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
       const id = `menu-${Date.now()}`;
       
       if (pgClient) {
-        const q = `INSERT INTO menu_items (id, name, description, category, price, image, availability, preparation_time, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()) RETURNING *`;
+        const q = `INSERT INTO menu_items (id, name, description, category, price, image, availability, preparation_time)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
         const values = [id, payload.name, payload.description||'', payload.category, payload.price, payload.image||null, true, payload.preparationTime];
         const { rows } = await pgClient.query(q, values);
         return res.status(201).json(rows[0]);

@@ -35,8 +35,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       const id = `BOOK-${Date.now()}`;
 
       if (pgClient) {
-        const q = `INSERT INTO bookings (id, customer_name, customer_email, customer_phone, booking_type, booking_data, total, payment_status, payment_data, status, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now()) RETURNING *`;
+        const q = `INSERT INTO bookings (id, customer_name, customer_email, customer_phone, booking_type, booking_data, total, payment_status, payment_data, status)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
         const values = [id, payload.customerName, payload.customerEmail||null, payload.customerPhone||null, payload.bookingType, JSON.stringify(payload.bookingData||{}), payload.total, payload.paymentStatus, JSON.stringify(payload.paymentData||null), payload.status];
         const { rows } = await pgClient.query(q, values);
         

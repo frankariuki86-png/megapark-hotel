@@ -43,8 +43,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       const id = `room-${Date.now()}`;
       
       if (pgClient) {
-        const q = `INSERT INTO rooms (id, room_number, name, type, description, price_per_night, images, amenities, capacity, availability, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()) RETURNING *`;
+        const q = `INSERT INTO rooms (id, room_number, name, type, description, price_per_night, images, amenities, capacity, availability)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
         const values = [
           id,
           payload.roomNumber,
