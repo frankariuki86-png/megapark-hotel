@@ -241,27 +241,10 @@ export const CartProvider = ({ children }) => {
       };
     }
 
-    // notify admin context of new booking (for real-time UI)
     try {
-      const eventDetail = {
-        id: localBooking.id,
-        roomId: payload.bookingData.roomId || payload.bookingData.hallId || '',
-        roomName: booking.name || (booking.room && booking.room.name) || '',
-        guestName: customer.name || booking.guestName || '',
-        email: customer.email || '',
-        phone: customer.phone || '',
-        checkIn: payload.bookingData.checkIn || payload.bookingData.eventDate || '',
-        checkOut: payload.bookingData.checkOut || '',
-        nights: booking.nights || 0,
-        guests: payload.bookingData.guests || payload.bookingData.guestCount || 0,
-        totalPrice: payload.total,
-        status: localBooking.status,
-        paymentStatus: localBooking.paymentStatus,
-        createdAt: localBooking.dateTime || new Date().toISOString()
-      };
-      window.dispatchEvent(new CustomEvent('new-booking', { detail: eventDetail }));
+      // persist booking to backend (below)
     } catch (e) {
-      // ignore if event fails
+      // no-op
     }
 
     try {
@@ -285,6 +268,29 @@ export const CartProvider = ({ children }) => {
       
       const created = await createRes.json();
       const bookingId = created.id || created.id || localId;
+
+      // notify admin context with server-created booking (ensures admin receives persisted data)
+      try {
+        const eventDetail = {
+          id: created.id || bookingId,
+          roomId: (created.bookingData && (created.bookingData.roomId || created.bookingData.hallId)) || created.roomId || '',
+          roomName: booking.name || (booking.room && booking.room.name) || created.roomName || '',
+          guestName: created.customerName || created.customer_name || customer.name || '',
+          email: created.customerEmail || created.customer_email || customer.email || '',
+          phone: created.customerPhone || created.customer_phone || customer.phone || '',
+          checkIn: (created.bookingData && (created.bookingData.checkIn || created.bookingData.eventDate)) || created.check_in || '',
+          checkOut: (created.bookingData && created.bookingData.checkOut) || created.check_out || '',
+          nights: (created.bookingData && created.bookingData.nights) || booking.nights || 0,
+          guests: (created.bookingData && (created.bookingData.guests || created.bookingData.guestCount)) || 0,
+          totalPrice: created.total || created.total_price || payload.total || 0,
+          status: created.status || 'booked',
+          paymentStatus: created.paymentStatus || created.payment_status || 'pending',
+          createdAt: created.createdAt || created.created_at || new Date().toISOString()
+        };
+        window.dispatchEvent(new CustomEvent('new-booking', { detail: eventDetail }));
+      } catch (e) {
+        // ignore
+      }
 
       // Create payment intent including bookingId metadata
       const piResp = await fetch(`${API_BASE_URL}/payments/create-intent`, {
