@@ -213,12 +213,63 @@ export const CartProvider = ({ children }) => {
     // Optimistically add local booking
     setOrders(prev => [localBooking, ...prev]);
 
+    // build standardized payload for backend
+    const payload = {
+      customerName: customer.name,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      bookingType: booking.type || 'room',
+      bookingData: {},
+      total: booking.price || booking.total || 0,
+      paymentStatus: 'pending',
+      status: 'booked'
+    };
+    if (payload.bookingType === 'room') {
+      payload.bookingData = {
+        roomId: (booking.room && booking.room.id) || booking.roomId || booking.id || '',
+        checkIn: booking.checkInDate || booking.checkIn || booking.date || '',
+        checkOut: booking.checkOutDate || booking.checkOut || booking.date || '',
+        guests: booking.guests || booking.guestCount || 0,
+        specialRequests: booking.specialRequests || ''
+      };
+    } else if (payload.bookingType === 'hall') {
+      payload.bookingData = {
+        hallId: booking.hallId || booking.id || '',
+        eventDate: booking.eventDate || booking.date || '',
+        eventTime: booking.eventTime || '',
+        guestCount: booking.guestCount || booking.guests || 0
+      };
+    }
+
+    // notify admin context of new booking (for real-time UI)
+    try {
+      const eventDetail = {
+        id: localBooking.id,
+        roomId: payload.bookingData.roomId || payload.bookingData.hallId || '',
+        roomName: booking.name || (booking.room && booking.room.name) || '',
+        guestName: customer.name || booking.guestName || '',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        checkIn: payload.bookingData.checkIn || payload.bookingData.eventDate || '',
+        checkOut: payload.bookingData.checkOut || '',
+        nights: booking.nights || 0,
+        guests: payload.bookingData.guests || payload.bookingData.guestCount || 0,
+        totalPrice: payload.total,
+        status: localBooking.status,
+        paymentStatus: localBooking.paymentStatus,
+        createdAt: localBooking.dateTime || new Date().toISOString()
+      };
+      window.dispatchEvent(new CustomEvent('new-booking', { detail: eventDetail }));
+    } catch (e) {
+      // ignore if event fails
+    }
+
     try {
       // Persist booking to backend
       const createRes = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...booking, customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone })
+        body: JSON.stringify(payload)
       });
       
       if (!createRes.ok) {

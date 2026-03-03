@@ -147,10 +147,14 @@ const Checkout = () => {
 
     // process bookings (rooms/halls)
     const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
-    bookingItems.forEach(item => {
-      addBooking(item, paymentData);
+    for (const item of bookingItems) {
+      try {
+        await addBooking(item, paymentData);
+      } catch (err) {
+        console.error('Failed to sync booking to backend:', err);
+      }
       removeFromCart(item.id);
-    });
+    }
 
     setIsPaymentOpen(false);
     alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}\nWe've sent a confirmation email to ${customerInfo.email}`);
