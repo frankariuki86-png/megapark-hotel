@@ -33,9 +33,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, ordersPath, logger }) => {
             }
       
       if (pgClient) {
-        const q = `INSERT INTO food_orders (customer_name, customer_email, customer_phone, order_type, order_date, delivery_date, delivery_address, items, subtotal, delivery_fee, tax, total_amount, status, payment_status, payment_method, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,now()) RETURNING *`;
-        const values = [payload.customerName, payload.customerEmail||null, payload.customerPhone||null, payload.orderType||'dine-in', payload.orderDate||new Date().toISOString(), payload.deliveryDate||null, payload.deliveryAddress||null, JSON.stringify(payload.items||[]), payload.subtotal||0, payload.deliveryFee||0, payload.tax||0, payload.totalAmount||0, payload.status||'pending', payload.paymentStatus||'pending', payload.paymentMethod||null];
+        const id = `ORDER-${Date.now()}`;
+        const q = `INSERT INTO food_orders (id, customer_name, customer_email, customer_phone, order_type, order_date, delivery_date, delivery_address, items, subtotal, delivery_fee, tax, total_amount, status, payment_status, payment_method, created_at)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,now()) RETURNING *`;
+        const values = [id, payload.customerName, payload.customerEmail||null, payload.customerPhone||null, payload.orderType||'dine-in', payload.orderDate||new Date().toISOString(), payload.deliveryDate||null, payload.deliveryAddress||null, JSON.stringify(payload.items||[]), payload.subtotal||0, payload.deliveryFee||0, payload.tax||0, payload.totalAmount||0, payload.status||'pending', payload.paymentStatus||'pending', payload.paymentMethod||null];
         const { rows } = await pgClient.query(q, values);
         return res.status(201).json(rows[0]);
       }

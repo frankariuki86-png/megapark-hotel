@@ -159,6 +159,11 @@ export const deleteRoomApi = (id) => call('DELETE', `/api/rooms/${id}`);
 export const fetchOrders = () => call('GET', '/api/orders');
 export const createOrder = (order) => call('POST', '/api/orders', order);
 export const updateOrderApi = (id, updates) => call('PUT', `/api/orders/${id}`, updates);
+
+// Booking endpoints
+export const fetchBookings = () => call('GET', '/api/bookings');
+export const createBooking = (booking) => call('POST', '/api/bookings', booking);
+export const updateBookingApi = (id, updates) => call('PUT', `/api/bookings/${id}`, updates);
 // Admin User Management endpoints
 // Admin User Management endpoints
 export const fetchAdminUsers = () => call('GET', '/api/admin/users');
@@ -182,7 +187,9 @@ export default {
   fetchHalls, createHall, updateHallApi, deleteHallApi,
   createHallQuote,
   fetchRooms, createRoom, updateRoomApi, deleteRoomApi,
-  fetchOrders, createOrder, updateOrderApi, loginAdmin, logoutAdmin, refreshAccessToken,
+  fetchOrders, createOrder, updateOrderApi,
+  fetchBookings, createBooking, updateBookingApi,
+  loginAdmin, logoutAdmin, refreshAccessToken,
   fetchAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, changeAdminPassword,
   createPaymentIntent, confirmPaymentIntent, getPaymentIntent,
   saveMenuItems, saveOrders, getToken, setToken, getRefreshToken, setTokens

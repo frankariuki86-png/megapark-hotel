@@ -160,10 +160,13 @@ const AdminDashboard = () => {
 
   // Overview Statistics
   const totalBookings = bookings.length;
+  const totalOrders = foodOrders.length;
   const totalRevenue = bookings.reduce((sum, b) => sum + (b.paymentStatus === 'paid' ? b.totalPrice : 0), 0) +
-                       events.reduce((sum, e) => sum + (e.paymentStatus === 'paid' ? e.totalPrice : 0), 0);
+                       events.reduce((sum, e) => sum + (e.paymentStatus === 'paid' ? e.totalPrice : 0), 0) +
+                       foodOrders.reduce((sum, o) => sum + (o.paymentStatus === 'paid' ? (o.totalAmount || o.total_price || 0) : 0), 0);
   const pendingPayments = bookings.filter(b => b.paymentStatus === 'pending').length +
-                          events.filter(e => e.paymentStatus === 'pending').length;
+                          events.filter(e => e.paymentStatus === 'pending').length +
+                          foodOrders.filter(o => o.paymentStatus === 'pending').length;
 
   return (
     <ToastProvider>
@@ -205,6 +208,10 @@ const AdminDashboard = () => {
               <div className="stat-card">
                 <div className="stat-value">{totalBookings}</div>
                 <div className="stat-label">Bookings</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">{totalOrders}</div>
+                <div className="stat-label">Food Orders</div>
               </div>
               <div className="stat-card">
                 <div className="stat-value">KES {totalRevenue.toLocaleString()}</div>

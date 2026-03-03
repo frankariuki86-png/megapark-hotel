@@ -40,10 +40,13 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
     try {
       const payload = HallCreateSchema.parse(req.body);
       
+      const id = `hall-${Date.now()}`;
+      
       if (pgClient) {
-        const q = `INSERT INTO halls (name, description, capacity, price_per_day, images, amenities, availability, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,now()) RETURNING *`;
+        const q = `INSERT INTO halls (id, name, description, capacity, price_per_day, images, amenities, availability, created_at)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()) RETURNING *`;
         const values = [
+          id,
           payload.name, 
           payload.description||'', 
           payload.capacity, 
@@ -56,7 +59,6 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
         return res.status(201).json(rows[0]);
       }
       const halls = readJSON(hallsPath, []);
-      const id = `hall-${Date.now()}`;
       const created = { id, ...payload, createdAt: new Date().toISOString() };
       halls.unshift(created);
       writeJSON(hallsPath, halls);

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, loginAdmin, logoutAdmin, fetchHalls, createHall, updateHallApi, deleteHallApi, fetchRooms, createRoom, updateRoomApi, deleteRoomApi } from '../api/mockApi';
+import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, fetchBookings, /* new */ loginAdmin, logoutAdmin, fetchHalls, createHall, updateHallApi, deleteHallApi, fetchRooms, createRoom, updateRoomApi, deleteRoomApi } from '../api/mockApi';
 
 const AdminContext = createContext();
 
@@ -327,7 +327,7 @@ export const AdminProvider = ({ children }) => {
     return () => { mounted = false };
   }, []); // Empty dependency array: run ONCE on mount only
 
-  // Fetch orders separately ONLY when user is already logged in
+  // Fetch orders and bookings separately ONLY when user is already logged in
   useEffect(() => {
     if (!adminUser) return; // Don't fetch if no user
     
@@ -341,18 +341,71 @@ export const AdminProvider = ({ children }) => {
         if (mounted) {
           if (remoteOrders && remoteOrders.length > 0) {
             console.log('[AdminContext] Setting orders from remote:', remoteOrders.length, 'orders');
-            setFoodOrders(remoteOrders);
+            const normalizedOrders = remoteOrders.map(o => ({
+              id: o.id,
+              customerName: o.customer_name || o.customerName || '',
+              customerEmail: o.customer_email || o.customerEmail || '',
+              customerPhone: o.customer_phone || o.customerPhone || '',
+              orderType: o.order_type || o.orderType || '',
+              orderDate: o.order_date || o.orderDate || '',
+              deliveryDate: o.delivery_date || o.deliveryDate || '',
+              deliveryAddress: o.delivery_address || o.deliveryAddress || null,
+              items: o.items || [],
+              subtotal: o.subtotal || o.sub_total || 0,
+              deliveryFee: o.delivery_fee || o.deliveryFee || 0,
+              tax: o.tax || 0,
+              totalAmount: o.total_amount || o.totalAmount || 0,
+              status: o.status,
+              paymentStatus: o.payment_status || o.paymentStatus || '',
+              paymentMethod: o.payment_method || o.paymentMethod || '',
+              createdAt: o.created_at || o.createdAt || ''
+            }));
+            setFoodOrders(normalizedOrders);
           } else {
-            console.log('[AdminContext] Remote orders empty, seeding with defaults');
-            await saveOrders(foodOrders);
+            console.log('[AdminContext] Remote orders empty - leaving local list empty');
           }
         }
       } catch (e) {
         console.warn('[AdminContext] Orders fetch error:', e.message);
       }
+
+      // also try to fetch bookings (requires auth) so admin can see real reservations
+      try {
+        console.log('[AdminContext] Fetching bookings for logged-in user...');
+        await new Promise(r => setTimeout(r, 300));
+        const remoteBookings = await fetchBookings();
+        console.log('[AdminContext] Bookings fetch result:', remoteBookings);
+        if (mounted && remoteBookings && remoteBookings.length > 0) {
+          console.log('[AdminContext] Normalizing and setting bookings from remote:', remoteBookings.length);
+          const normalized = remoteBookings.map(b => {
+            const room = rooms.find(r => r.id === (b.room_id || b.roomId));
+            return {
+              id: b.id,
+              roomId: b.room_id || b.roomId || '',
+              roomName: room ? room.name : '',
+              guestName: b.guest_name || b.guestName || '',
+              email: b.email || '',
+              phone: b.phone || '',
+              checkIn: b.check_in || b.checkIn || '',
+              checkOut: b.check_out || b.checkOut || '',
+              nights: b.nights || 0,
+              guests: b.guests || 0,
+              totalPrice: b.total_price || b.totalPrice || 0,
+              status: b.status || '',
+              paymentStatus: b.payment_status || b.paymentStatus || '',
+              createdAt: b.created_at || b.createdAt || ''
+            };
+          });
+          setBookings(normalized);
+        } else {
+          console.log('[AdminContext] Remote bookings empty - leaving local list as-is');
+        }
+      } catch (e) {
+        console.warn('[AdminContext] Bookings fetch error:', e.message);
+      }
     })();
     return () => { mounted = false };
-  }, [adminUser]); // Only re-fetch orders when user logs in/out
+  }, [adminUser]); // Only re-fetch when user logs in/out
 
   // Real backend login via API
   const adminLogin = useCallback(async (email, password) => {
@@ -508,14 +561,39 @@ export const AdminProvider = ({ children }) => {
   }, [menuItems]);
 
   // Food Order Management
+  const normalizeOrder = (o) => {
+    if (!o) return o;
+    return {
+      id: o.id,
+      customerName: o.customer_name || o.customerName || '',
+      customerEmail: o.customer_email || o.customerEmail || '',
+      customerPhone: o.customer_phone || o.customerPhone || '',
+      orderType: o.order_type || o.orderType || '',
+      orderDate: o.order_date || o.orderDate || '',
+      deliveryDate: o.delivery_date || o.deliveryDate || '',
+      deliveryAddress: o.delivery_address || o.deliveryAddress || null,
+      items: o.items || [],
+      subtotal: o.subtotal || o.sub_total || 0,
+      deliveryFee: o.delivery_fee || o.deliveryFee || 0,
+      tax: o.tax || 0,
+      totalAmount: o.total_amount || o.totalAmount || 0,
+      status: o.status,
+      paymentStatus: o.payment_status || o.paymentStatus || '',
+      paymentMethod: o.payment_method || o.paymentMethod || '',
+      createdAt: o.created_at || o.createdAt || ''
+    };
+  };
+
   const updateFoodOrder = useCallback(async (orderId, updates) => {
-    const updated = await updateOrderApi(orderId, updates);
+    const updatedRaw = await updateOrderApi(orderId, updates);
+    const updated = normalizeOrder(updatedRaw);
     setFoodOrders(prev => prev.map(order => order.id === orderId ? updated : order));
     return updated;
   }, []);
 
   const cancelFoodOrder = useCallback(async (orderId) => {
-    const updated = await updateOrderApi(orderId, { status: 'cancelled' });
+    const updatedRaw = await updateOrderApi(orderId, { status: 'cancelled' });
+    const updated = normalizeOrder(updatedRaw);
     setFoodOrders(prev => prev.map(order => order.id === orderId ? updated : order));
     return updated;
   }, []);

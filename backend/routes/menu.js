@@ -41,15 +41,17 @@ module.exports = ({ pgClient, readJSON, writeJSON, menuPath, logger }) => {
     try {
       const payload = MenuItemCreateSchema.parse(req.body);
       
+      // generate a unique id so the database primary key is satisfied
+      const id = `menu-${Date.now()}`;
+      
       if (pgClient) {
-        const q = `INSERT INTO menu_items (name, description, category, price, image, availability, preparation_time, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,now()) RETURNING *`;
-        const values = [payload.name, payload.description||'', payload.category, payload.price, payload.image||null, true, payload.preparationTime];
+        const q = `INSERT INTO menu_items (id, name, description, category, price, image, availability, preparation_time, created_at)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()) RETURNING *`;
+        const values = [id, payload.name, payload.description||'', payload.category, payload.price, payload.image||null, true, payload.preparationTime];
         const { rows } = await pgClient.query(q, values);
         return res.status(201).json(rows[0]);
       }
       const items = readJSON(menuPath, []);
-      const id = `menu-${Date.now()}`;
       const created = { id, ...payload, createdAt: new Date().toISOString() };
       items.unshift(created);
       writeJSON(menuPath, items);

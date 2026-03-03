@@ -41,8 +41,8 @@ app.use(globalRateLimit);
 // Request logging
 app.use(requestLogger);
 
-// Body parsing
-app.use(express.json({ limit: '2mb' }));
+// Body parsing (increase size to accommodate base64 images from admin forms)
+app.use(express.json({ limit: '10mb' }));
 
 // Swagger API Documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs, {

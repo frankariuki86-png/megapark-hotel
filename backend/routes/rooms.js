@@ -40,10 +40,13 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
     try {
       const payload = RoomCreateSchema.parse(req.body);
       
+      const id = `room-${Date.now()}`;
+      
       if (pgClient) {
-        const q = `INSERT INTO rooms (room_number, name, type, description, price_per_night, images, amenities, capacity, availability, created_at)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now()) RETURNING *`;
+        const q = `INSERT INTO rooms (id, room_number, name, type, description, price_per_night, images, amenities, capacity, availability, created_at)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()) RETURNING *`;
         const values = [
+          id,
           payload.roomNumber,
           payload.name, 
           payload.type,
@@ -58,7 +61,6 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         return res.status(201).json(rows[0]);
       }
       const rooms = readJSON(roomsPath, []);
-      const id = `room-${Date.now()}`;
       const created = { id, ...payload, createdAt: new Date().toISOString() };
       rooms.unshift(created);
       writeJSON(roomsPath, rooms);
