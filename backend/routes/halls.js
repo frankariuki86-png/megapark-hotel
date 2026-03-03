@@ -99,8 +99,6 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       return res.status(500).json({ error: 'server_error' });
     }
   });
-    }
-  });
 
   // PUT - Update hall (protected)
   router.put('/:id', authenticate, async (req, res) => {
