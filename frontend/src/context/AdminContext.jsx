@@ -19,6 +19,25 @@ export const AdminProvider = ({ children }) => {
 
   const [rooms, setRooms] = useState([]);
 
+  // Helper to normalize room data from DB (snake_case) to UI (camelCase)
+  const normalizeRoom = (room) => {
+    if (!room) return room;
+    return {
+      id: room.id,
+      roomNumber: room.room_number || room.roomNumber || '',
+      name: room.name,
+      type: room.type,
+      description: room.description || '',
+      pricePerNight: room.price_per_night || room.pricePerNight || 0,
+      capacity: room.capacity || 2,
+      amenities: room.amenities || [],
+      availability: room.availability !== undefined ? room.availability : true,
+      images: room.images || [],
+      createdAt: room.created_at || room.createdAt || '',
+      updatedAt: room.updated_at || room.updatedAt || ''
+    };
+  };
+
   const [bookings, setBookings] = useState([]);
 
   // listen for booking events emitted from cart context (or other parts of app)
@@ -123,6 +142,23 @@ export const AdminProvider = ({ children }) => {
 
   const [halls, setHalls] = useState([]);
 
+  // Helper to normalize hall data from DB (snake_case) to UI (camelCase)
+  const normalizeHall = (hall) => {
+    if (!hall) return hall;
+    return {
+      id: hall.id,
+      name: hall.name,
+      description: hall.description || '',
+      capacity: hall.capacity || 100,
+      pricePerDay: hall.price_per_day || hall.pricePerDay || 0,
+      amenities: hall.amenities || [],
+      availability: hall.availability !== undefined ? hall.availability : true,
+      images: hall.images || [],
+      createdAt: hall.created_at || hall.createdAt || '',
+      updatedAt: hall.updated_at || hall.updatedAt || ''
+    };
+  };
+
   const [halls_state, setHallsState] = useState({
     loading: false,
     error: null
@@ -162,7 +198,8 @@ export const AdminProvider = ({ children }) => {
           console.log('[AdminContext] Halls fetch result:', remoteHalls);
           if (mounted && remoteHalls && remoteHalls.length > 0) {
             console.log('[AdminContext] Setting halls from remote:', remoteHalls.length, 'halls');
-            setHalls(remoteHalls);
+            const normalized = remoteHalls.map(h => normalizeHall(h));
+            setHalls(normalized);
           }
         } catch (e) {
           console.warn('[AdminContext] Halls fetch error (non-fatal):', e.message);
@@ -175,7 +212,8 @@ export const AdminProvider = ({ children }) => {
           console.log('[AdminContext] Rooms fetch result:', remoteRooms);
           if (mounted && remoteRooms && remoteRooms.length > 0) {
             console.log('[AdminContext] Setting rooms from remote:', remoteRooms.length, 'rooms');
-            setRooms(remoteRooms);
+            const normalized = remoteRooms.map(r => normalizeRoom(r));
+            setRooms(normalized);
           }
         } catch (e) {
           console.warn('[AdminContext] Rooms fetch error (non-fatal):', e.message);
@@ -464,8 +502,9 @@ export const AdminProvider = ({ children }) => {
       console.log('[AdminContext] Creating hall:', hall);
       const created = await createHall(hall);
       console.log('[AdminContext] Hall created:', created);
-      setHalls(prev => [created, ...prev]);
-      return created;
+      const normalized = normalizeHall(created);
+      setHalls(prev => [normalized, ...prev]);
+      return normalized;
     } catch (err) {
       console.error('[AdminContext] Error creating hall:', err.message);
       throw err;
@@ -477,8 +516,9 @@ export const AdminProvider = ({ children }) => {
       console.log('[AdminContext] Updating hall:', hallId, updates);
       const updated = await updateHallApi(hallId, updates);
       console.log('[AdminContext] Hall updated:', updated);
-      setHalls(prev => prev.map(h => h.id === hallId ? updated : h));
-      return updated;
+      const normalized = normalizeHall(updated);
+      setHalls(prev => prev.map(h => h.id === hallId ? normalized : h));
+      return normalized;
     } catch (err) {
       console.error('[AdminContext] Error updating hall:', err.message);
       throw err;
@@ -514,8 +554,9 @@ export const AdminProvider = ({ children }) => {
       console.log('[AdminContext] Creating room:', room);
       const created = await createRoom(room);
       console.log('[AdminContext] Room created:', created);
-      setRooms(prev => [created, ...prev]);
-      return created;
+      const normalized = normalizeRoom(created);
+      setRooms(prev => [normalized, ...prev]);
+      return normalized;
     } catch (err) {
       console.error('[AdminContext] Error creating room:', err.message);
       throw err;
@@ -527,8 +568,9 @@ export const AdminProvider = ({ children }) => {
       console.log('[AdminContext] Updating room:', roomId, updates);
       const updated = await updateRoomApi(roomId, updates);
       console.log('[AdminContext] Room updated:', updated);
-      setRooms(prev => prev.map(r => r.id === roomId ? updated : r));
-      return updated;
+      const normalized = normalizeRoom(updated);
+      setRooms(prev => prev.map(r => r.id === roomId ? normalized : r));
+      return normalized;
     } catch (err) {
       console.error('[AdminContext] Error updating room:', err.message);
       throw err;
