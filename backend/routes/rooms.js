@@ -55,8 +55,18 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         );
         const existingCols = colRows.map(r => r.column_name);
 
-        // mapping from payload keys to column names
-        const keyMap = { roomNumber: 'room_number', pricePerNight: 'price_per_night' };
+        // dynamic mapping from payload keys to whichever column is available
+        const keyMap = {};
+        if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
+        // price: prefer new column but fall back to old `price`
+        if (existingCols.includes('price_per_night')) {
+          keyMap.pricePerNight = 'price_per_night';
+        } else if (existingCols.includes('price')) {
+          keyMap.pricePerNight = 'price';
+        }
+        // type column may or may not exist, but if it does we just use same name
+        if (existingCols.includes('type')) keyMap.type = 'type';
+
         const dbCols = ['id'];
         const values = [id];
 
@@ -106,7 +116,15 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         );
         const existingCols = colRows.map(r => r.column_name);
 
-        const keyMap = { roomNumber: 'room_number', pricePerNight: 'price_per_night' };
+        const keyMap = {};
+        if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
+        if (existingCols.includes('price_per_night')) {
+          keyMap.pricePerNight = 'price_per_night';
+        } else if (existingCols.includes('price')) {
+          keyMap.pricePerNight = 'price';
+        }
+        if (existingCols.includes('type')) keyMap.type = 'type';
+
         const updates = [];
         const values = [];
         let idx = 1;

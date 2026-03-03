@@ -48,7 +48,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
         );
         const existingCols = colRows.map(r => r.column_name);
 
-        const keyMap = { pricePerDay: 'price_per_day' };
+        const keyMap = {};
+        if (existingCols.includes('price_per_day')) {
+          keyMap.pricePerDay = 'price_per_day';
+        } else if (existingCols.includes('price')) {
+          keyMap.pricePerDay = 'price';
+        }
+        // name, description, capacity, etc. use same name if present
+
         const dbCols = ['id'];
         const values = [id];
 
@@ -91,7 +98,12 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
         );
         const existingCols = colRows.map(r => r.column_name);
 
-        const keyMap = { pricePerDay: 'price_per_day' };
+        const keyMap = {};
+        if (existingCols.includes('price_per_day')) {
+          keyMap.pricePerDay = 'price_per_day';
+        } else if (existingCols.includes('price')) {
+          keyMap.pricePerDay = 'price';
+        }
         const updates = [];
         const values = [];
         let idx = 1;
