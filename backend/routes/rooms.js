@@ -38,7 +38,13 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   // POST - Create room (protected)
   router.post('/', authenticate, async (req, res) => {
     try {
-      const payload = RoomCreateSchema.parse(req.body);
+      // accept legacy `price` field from older clients
+      const body = { ...req.body };
+      if (body.price !== undefined && body.pricePerNight === undefined) {
+        body.pricePerNight = body.price;
+        delete body.price;
+      }
+      const payload = RoomCreateSchema.parse(body);
       
       const id = `room-${Date.now()}`;
       
@@ -57,8 +63,19 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
           payload.capacity,
           payload.availability !== false,
         ];
-        const { rows } = await pgClient.query(q, values);
-        return res.status(201).json(rows[0]);
+        try {
+          const { rows } = await pgClient.query(q, values);
+          return res.status(201).json(rows[0]);
+        } catch (dbErr) {
+          // fallback if the column name differs (old schema used `price`)
+          if (/column \"price_per_night\" does not exist/.test(dbErr.message)) {
+            const fallbackQ = `INSERT INTO rooms (id, room_number, name, type, description, price, images, amenities, capacity, availability)
+                               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
+            const { rows } = await pgClient.query(fallbackQ, values);
+            return res.status(201).json(rows[0]);
+          }
+          throw dbErr;
+        }
       }
       const rooms = readJSON(roomsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString() };
@@ -78,7 +95,13 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   router.put('/:id', authenticate, async (req, res) => {
     try {
       const id = req.params.id;
-      const payload = RoomUpdateSchema.parse(req.body);
+      // allow legacy `price` key as alias
+      const body = { ...req.body };
+      if (body.price !== undefined && body.pricePerNight === undefined) {
+        body.pricePerNight = body.price;
+        delete body.price;
+      }
+      const payload = RoomUpdateSchema.parse(body);
       
       if (pgClient) {
         const updates = [];
@@ -102,9 +125,21 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
         const q = `UPDATE rooms SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
         values.push(id);
-        const { rows } = await pgClient.query(q, values);
-        if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-        return res.json(rows[0]);
+        try {
+          const { rows } = await pgClient.query(q, values);
+          if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+          return res.json(rows[0]);
+        } catch (dbErr) {
+          // fallback if price_per_night column missing or using `price`
+          if (/column \"price_per_night\" does not exist/.test(dbErr.message)) {
+            const fallbackUpdates = updates.map(u => u.replace('price_per_night', 'price'));
+            const fallbackQ = `UPDATE rooms SET ${fallbackUpdates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+            const { rows } = await pgClient.query(fallbackQ, values);
+            if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+            return res.json(rows[0]);
+          }
+          throw dbErr;
+        }
       }
       const rooms = readJSON(roomsPath, []);
       const idx = rooms.findIndex(it => it.id === id);

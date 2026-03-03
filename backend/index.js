@@ -200,7 +200,8 @@ async function seedDatabase(pgClient, logger) {
 
 // Routes
 // Routes - with error handling
-let authRouter, menuRouter, ordersRouter, paymentsRouter, adminUsersRouter, hallsRouter, roomsRouter, hallQuoteRouter;
+let authRouter, menuRouter, ordersRouter, bookingsRouter, paymentsRouter, adminUsersRouter, hallsRouter, roomsRouter, hallQuoteRouter; // include bookingsRouter
+
 
 try {
   logger.info('Initializing auth router...');
@@ -229,8 +230,19 @@ try {
   throw e;
 }
 
+// prepare bookings JSON path (for file-backed backup)
 const bookingsPath = path.join(dataDir, 'bookings.json');
 if (!fs.existsSync(bookingsPath)) fs.writeFileSync(bookingsPath, JSON.stringify([], null, 2));
+
+// Initialize bookings router
+try {
+  logger.info('Initializing bookings router...');
+  bookingsRouter = require('./routes/bookings')({ pgClient, readJSON, writeJSON, bookingsPath, logger });
+  logger.info('✓ Bookings router initialized');
+} catch (e) {
+  logger.error('✗ Failed to initialize bookings router:', e.message);
+  throw e;
+}
 
 try {
   logger.info('Initializing payments router...');
@@ -303,6 +315,7 @@ validateRouter('hallsRouter', hallsRouter);
 validateRouter('roomsRouter', roomsRouter);
 validateRouter('hallQuoteRouter', hallQuoteRouter);
 validateRouter('ordersRouter', ordersRouter);
+validateRouter('bookingsRouter', bookingsRouter);
 validateRouter('paymentsRouter', paymentsRouter);
 validateRouter('adminUsersRouter', adminUsersRouter);
 
@@ -315,6 +328,7 @@ app.use('/api/menu', apiRateLimit);
 app.use('/api/halls', apiRateLimit);
 app.use('/api/rooms', apiRateLimit);
 app.use('/api/orders', apiRateLimit);
+app.use('/api/bookings', apiRateLimit);
 app.use('/api/payments', apiRateLimit);
 app.use('/api/halls/quote', apiRateLimit);
 
@@ -343,6 +357,10 @@ try {
   logger.info('Mounting /api/orders router...');
   app.use('/api/orders', ordersRouter);
   logger.info('✓ /api/orders mounted');
+  
+  logger.info('Mounting /api/bookings router...');
+  app.use('/api/bookings', bookingsRouter);
+  logger.info('✓ /api/bookings mounted');
   
   logger.info('Mounting /api/payments router...');
   app.use('/api/payments', paymentsRouter);

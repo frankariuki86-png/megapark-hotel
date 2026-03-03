@@ -55,8 +55,18 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
           JSON.stringify(payload.amenities || []),
           payload.availability !== false,
         ];
-        const { rows } = await pgClient.query(q, values);
-        return res.status(201).json(rows[0]);
+        try {
+          const { rows } = await pgClient.query(q, values);
+          return res.status(201).json(rows[0]);
+        } catch (dbErr) {
+          if (/column \"price_per_day\" does not exist/.test(dbErr.message)) {
+            const fallbackQ = `INSERT INTO halls (id, name, description, capacity, price, images, amenities, availability)
+                               VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
+            const { rows } = await pgClient.query(fallbackQ, values);
+            return res.status(201).json(rows[0]);
+          }
+          throw dbErr;
+        }
       }
       const halls = readJSON(hallsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString() };
@@ -97,9 +107,20 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
         if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
         const q = `UPDATE halls SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
         values.push(id);
-        const { rows } = await pgClient.query(q, values);
-        if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-        return res.json(rows[0]);
+        try {
+          const { rows } = await pgClient.query(q, values);
+          if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+          return res.json(rows[0]);
+        } catch (dbErr) {
+          if (/column \"price_per_day\" does not exist/.test(dbErr.message)) {
+            const fallbackUpdates = updates.map(u => u.replace('price_per_day', 'price'));
+            const fallbackQ = `UPDATE halls SET ${fallbackUpdates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+            const { rows } = await pgClient.query(fallbackQ, values);
+            if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+            return res.json(rows[0]);
+          }
+          throw dbErr;
+        }
       }
       const halls = readJSON(hallsPath, []);
       const idx = halls.findIndex(it => it.id === id);
