@@ -21,6 +21,18 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         try {
           const { rows } = await pgClient.query('SELECT * FROM rooms ORDER BY created_at DESC');
           logger.info('GET /api/rooms - DB query successful, rows:', rows.length);
+
+          // add any JSON fallback entries not yet persisted in the database
+          const jsonRooms = readJSON(roomsPath, []);
+          if (jsonRooms && jsonRooms.length) {
+            const dbIds = new Set(rows.map(r => r.id));
+            const extra = jsonRooms.filter(r => !dbIds.has(r.id));
+            if (extra.length) {
+              logger.info('GET /api/rooms - adding', extra.length, 'fallback rooms to DB result');
+              rows.unshift(...extra);
+            }
+          }
+
           return res.json(rows);
         } catch (dbErr) {
           logger.warn('GET /api/rooms - DB query failed, falling back to JSON:', dbErr.message);
