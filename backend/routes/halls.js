@@ -193,9 +193,27 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
     try {
       const id = req.params.id;
       if (pgClient) {
-        const result = await pgClient.query('DELETE FROM halls WHERE id = $1', [id]);
-        if (result.rowCount === 0) return res.status(404).json({ error: 'not_found' });
-        return res.status(204).send();
+        try {
+          const result = await pgClient.query('DELETE FROM halls WHERE id = $1', [id]);
+          if (result.rowCount === 0) {
+            // not found in db, try JSON
+            const halls = readJSON(hallsPath, []);
+            const idx = halls.findIndex(it => it.id === id);
+            if (idx === -1) return res.status(404).json({ error: 'not_found' });
+            halls.splice(idx, 1);
+            writeJSON(hallsPath, halls);
+            return res.status(204).send();
+          }
+          return res.status(204).send();
+        } catch (dbErr) {
+          logger.warn('DELETE /api/halls/:id DB error, falling back to JSON', dbErr.message);
+          const halls = readJSON(hallsPath, []);
+          const idx = halls.findIndex(it => it.id === id);
+          if (idx === -1) return res.status(404).json({ error: 'not_found' });
+          halls.splice(idx, 1);
+          writeJSON(hallsPath, halls);
+          return res.status(204).send();
+        }
       }
       const halls = readJSON(hallsPath, []);
       const idx = halls.findIndex(it => it.id === id);

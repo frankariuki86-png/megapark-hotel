@@ -121,39 +121,56 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       }
       const payload = RoomUpdateSchema.parse(body);
       
+      let useDB = false;
       if (pgClient) {
-        // get current column list so we only update what exists
-        const { rows: colRows } = await pgClient.query(
-          `SELECT column_name FROM information_schema.columns WHERE table_name='rooms'`
-        );
-        const existingCols = colRows.map(r => r.column_name);
+        try {
+          // check if table exists at all
+          const { rows: check } = await pgClient.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name='rooms' LIMIT 1`
+          );
+          useDB = check && check.length > 0;
+          if (useDB) {
+            // get current column list so we only update what exists
+            const { rows: colRows } = await pgClient.query(
+              `SELECT column_name FROM information_schema.columns WHERE table_name='rooms'`
+            );
+            const existingCols = colRows.map(r => r.column_name);
 
-        const keyMap = {};
-        if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
-        if (existingCols.includes('price_per_night')) {
-          keyMap.pricePerNight = 'price_per_night';
-        } else if (existingCols.includes('price')) {
-          keyMap.pricePerNight = 'price';
+            const keyMap = {};
+            if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
+            if (existingCols.includes('price_per_night')) {
+              keyMap.pricePerNight = 'price_per_night';
+            } else if (existingCols.includes('price')) {
+              keyMap.pricePerNight = 'price';
+            }
+            if (existingCols.includes('type')) keyMap.type = 'type';
+
+            const updates = [];
+            const values = [];
+            let idx = 1;
+            for (const [k, v] of Object.entries(payload)) {
+              if (v === undefined) continue;
+              const col = keyMap[k] || k;
+              if (!existingCols.includes(col)) continue;
+
+              updates.push(`${col} = $${idx++}`);
+              values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+            }
+            if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
+            const q = `UPDATE rooms SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+            values.push(id);
+            const { rows } = await pgClient.query(q, values);
+            if (rows.length === 0) {
+              // not in DB, fall back to JSON below
+              useDB = false;
+            } else {
+              return res.json(rows[0]);
+            }
+          }
+        } catch (dbErr) {
+          logger.warn('PUT /api/rooms/:id DB error', dbErr.message);
+          useDB = false;
         }
-        if (existingCols.includes('type')) keyMap.type = 'type';
-
-        const updates = [];
-        const values = [];
-        let idx = 1;
-        for (const [k, v] of Object.entries(payload)) {
-          if (v === undefined) continue;
-          const col = keyMap[k] || k;
-          if (!existingCols.includes(col)) continue;
-
-          updates.push(`${col} = $${idx++}`);
-          values.push(Array.isArray(v) ? JSON.stringify(v) : v);
-        }
-        if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
-        const q = `UPDATE rooms SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
-        values.push(id);
-        const { rows } = await pgClient.query(q, values);
-        if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-        return res.json(rows[0]);
       }
       const rooms = readJSON(roomsPath, []);
       const idx = rooms.findIndex(it => it.id === id);
@@ -175,9 +192,27 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
     try {
       const id = req.params.id;
       if (pgClient) {
-        const result = await pgClient.query('DELETE FROM rooms WHERE id = $1', [id]);
-        if (result.rowCount === 0) return res.status(404).json({ error: 'not_found' });
-        return res.status(204).send();
+        try {
+          const result = await pgClient.query('DELETE FROM rooms WHERE id = $1', [id]);
+          if (result.rowCount === 0) {
+            // not in DB, attempt JSON fallback remove
+            const rooms = readJSON(roomsPath, []);
+            const idx = rooms.findIndex(it => it.id === id);
+            if (idx === -1) return res.status(404).json({ error: 'not_found' });
+            rooms.splice(idx, 1);
+            writeJSON(roomsPath, rooms);
+            return res.status(204).send();
+          }
+          return res.status(204).send();
+        } catch (dbErr) {
+          logger.warn('DELETE /api/rooms/:id DB error, falling back to JSON', dbErr.message);
+          const rooms = readJSON(roomsPath, []);
+          const idx = rooms.findIndex(it => it.id === id);
+          if (idx === -1) return res.status(404).json({ error: 'not_found' });
+          rooms.splice(idx, 1);
+          writeJSON(roomsPath, rooms);
+          return res.status(204).send();
+        }
       }
       const rooms = readJSON(roomsPath, []);
       const idx = rooms.findIndex(it => it.id === id);
