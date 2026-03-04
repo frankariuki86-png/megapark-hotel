@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authenticate');
+const { uploadAndOptimizeMultipleImages } = require('../middleware/fileUpload');
 const { RoomCreateSchema, RoomUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
@@ -74,7 +75,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   });
 
   // POST - Create room (protected)
-  router.post('/', authenticate, async (req, res) => {
+  router.post('/', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
     try {
       // accept legacy `price` field from older clients
       const body = { ...req.body };
@@ -82,6 +83,20 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         body.pricePerNight = body.price;
         delete body.price;
       }
+
+      // Handle uploaded image files: add their URLs to the images array
+      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
+        const uploadedImageUrls = req.optimizedFiles.map(f => f.optimizedUrl);
+        body.images = uploadedImageUrls;
+      } else if (body.images && typeof body.images === 'string') {
+        // If images came as a JSON string (from FormData), parse them
+        try {
+          body.images = JSON.parse(body.images);
+        } catch (e) {
+          body.images = [];
+        }
+      }
+      
       const payload = RoomCreateSchema.parse(body);
       
       const id = `room-${Date.now()}`;
@@ -138,7 +153,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   });
 
   // PUT - Update room (protected)
-  router.put('/:id', authenticate, async (req, res) => {
+  router.put('/:id', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
     try {
       const id = req.params.id;
       // allow legacy `price` key as alias
@@ -147,6 +162,20 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         body.pricePerNight = body.price;
         delete body.price;
       }
+
+      // Handle uploaded image files: add their URLs to the images array
+      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
+        const uploadedImageUrls = req.optimizedFiles.map(f => f.optimizedUrl);
+        body.images = uploadedImageUrls;
+      } else if (body.images && typeof body.images === 'string') {
+        // If images came as a JSON string (from FormData), parse them
+        try {
+          body.images = JSON.parse(body.images);
+        } catch (e) {
+          body.images = [];
+        }
+      }
+      
       const payload = RoomUpdateSchema.parse(body);
       
       let useDB = false;

@@ -124,7 +124,7 @@ export const roomsService = {
     return data;
   },
 
-  async create(room) {
+  async create(room, imageFiles = []) {
     // normalize legacy price field and ensure numeric types
     const payload = { ...room };
     if (payload.price !== undefined && payload.pricePerNight === undefined) {
@@ -134,11 +134,41 @@ export const roomsService = {
     if (payload.pricePerNight !== undefined) payload.pricePerNight = Number(payload.pricePerNight);
 
     const url = `${API_BASE_URL}/rooms`;
-    console.log('[roomsService.create] Creating at:', url, 'data:', payload);
+    console.log('[roomsService.create] Creating at:', url, 'data:', payload, 'files:', imageFiles.length);
+    
+    // Build FormData to support file uploads
+    const formData = new FormData();
+    
+    // Add all room data fields
+    formData.append('name', payload.name);
+    formData.append('roomNumber', payload.roomNumber);
+    formData.append('type', payload.type);
+    formData.append('description', payload.description || '');
+    formData.append('pricePerNight', payload.pricePerNight);
+    formData.append('capacity', payload.capacity);
+    formData.append('availability', payload.availability);
+    if (payload.amenities && Array.isArray(payload.amenities)) {
+      formData.append('amenities', JSON.stringify(payload.amenities));
+    }
+    
+    // Add image files if provided
+    if (imageFiles && imageFiles.length > 0) {
+      for (const file of imageFiles) {
+        formData.append('images', file);
+      }
+    }
+
+    // Get auth headers without Content-Type (let browser set it for multipart/form-data)
+    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(url, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload)
+      headers,
+      body: formData
     });
     console.log('[roomsService.create] Response status:', res.status);
     if (!res.ok) {
@@ -151,7 +181,7 @@ export const roomsService = {
     return data;
   },
 
-  async update(id, room) {
+  async update(id, room, imageFiles = []) {
     const payload = { ...room };
     if (payload.price !== undefined && payload.pricePerNight === undefined) {
       payload.pricePerNight = parseFloat(payload.price);
@@ -160,11 +190,41 @@ export const roomsService = {
     if (payload.pricePerNight !== undefined) payload.pricePerNight = Number(payload.pricePerNight);
 
     const url = `${API_BASE_URL}/rooms/${id}`;
-    console.log('[roomsService.update] Updating at:', url, 'data:', payload);
+    console.log('[roomsService.update] Updating at:', url, 'data:', payload, 'files:', imageFiles.length);
+    
+    // Build FormData to support file uploads
+    const formData = new FormData();
+    
+    // Add all room data fields
+    if (payload.name) formData.append('name', payload.name);
+    if (payload.roomNumber) formData.append('roomNumber', payload.roomNumber);
+    if (payload.type) formData.append('type', payload.type);
+    if (payload.description !== undefined) formData.append('description', payload.description);
+    if (payload.pricePerNight !== undefined) formData.append('pricePerNight', payload.pricePerNight);
+    if (payload.capacity !== undefined) formData.append('capacity', payload.capacity);
+    if (payload.availability !== undefined) formData.append('availability', payload.availability);
+    if (payload.amenities && Array.isArray(payload.amenities)) {
+      formData.append('amenities', JSON.stringify(payload.amenities));
+    }
+    
+    // Add image files if provided
+    if (imageFiles && imageFiles.length > 0) {
+      for (const file of imageFiles) {
+        formData.append('images', file);
+      }
+    }
+
+    // Get auth headers without Content-Type (let browser set it for multipart/form-data)
+    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(url, {
       method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload)
+      headers,
+      body: formData
     });
     console.log('[roomsService.update] Response status:', res.status);
     if (!res.ok) {

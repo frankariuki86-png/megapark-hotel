@@ -70,9 +70,9 @@ const RoomsManagement = () => {
     e.preventDefault();
     try {
       if (editingId) {
-        await roomsService.update(editingId, formData);
+        await roomsService.update(editingId, formData, imageFiles);
       } else {
-        await roomsService.create(formData);
+        await roomsService.create(formData, imageFiles);
       }
       await fetchRooms();
       setShowForm(false);

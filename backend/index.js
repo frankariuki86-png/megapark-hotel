@@ -44,6 +44,16 @@ app.use(requestLogger);
 // Body parsing (increase size to accommodate base64 images from admin forms)
 app.use(express.json({ limit: '10mb' }));
 
+// Serve uploaded images and files as static assets
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir, {
+  maxAge: '7d',
+  etag: false
+}));
+
+logger.info('Uploads directory configured at:', uploadsDir);
+
 // Swagger API Documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs, {
   swaggerOptions: {
