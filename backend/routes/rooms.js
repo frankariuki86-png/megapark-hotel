@@ -79,8 +79,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
     try {
       // accept legacy `price` field from older clients
       const body = { ...req.body };
+      
+      // Convert FormData string values to proper types
+      if (body.pricePerNight) body.pricePerNight = parseFloat(body.pricePerNight);
+      if (body.capacity) body.capacity = parseInt(body.capacity, 10);
+      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
+      
       if (body.price !== undefined && body.pricePerNight === undefined) {
-        body.pricePerNight = body.price;
+        body.pricePerNight = parseFloat(body.price);
         delete body.price;
       }
 
@@ -97,7 +103,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         }
       }
       
+      logger.info('POST /api/rooms body after conversion:', body);
       const payload = RoomCreateSchema.parse(body);
+      logger.info('POST /api/rooms payload after schema validation:', payload);
       
       const id = `room-${Date.now()}`;
       
@@ -145,6 +153,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       return res.status(201).json(created);
     } catch (e) {
       if (e.name === 'ZodError') {
+        logger.error('POST /api/rooms validation error:', e.errors);
         return res.status(400).json({ error: 'Validation error', details: e.errors });
       }
       logger.error('POST /api/rooms error', e.message);
@@ -158,8 +167,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       const id = req.params.id;
       // allow legacy `price` key as alias
       const body = { ...req.body };
+      
+      // Convert FormData string values to proper types
+      if (body.pricePerNight) body.pricePerNight = parseFloat(body.pricePerNight);
+      if (body.capacity) body.capacity = parseInt(body.capacity, 10);
+      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
+      
       if (body.price !== undefined && body.pricePerNight === undefined) {
-        body.pricePerNight = body.price;
+        body.pricePerNight = parseFloat(body.price);
         delete body.price;
       }
 
@@ -239,6 +254,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       return res.json(updated);
     } catch (e) {
       if (e.name === 'ZodError') {
+        logger.error('PUT /api/rooms/:id validation error:', e.errors);
         return res.status(400).json({ error: 'Validation error', details: e.errors });
       }
       logger.error('PUT /api/rooms/:id error', e.message);

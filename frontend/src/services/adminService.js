@@ -174,7 +174,11 @@ export const roomsService = {
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       console.error('[roomsService.create] Error:', error);
-      throw new Error(error.error || 'Failed to create room');
+      let errorMsg = error.error || 'Failed to create room';
+      if (error.details) {
+        errorMsg += ': ' + JSON.stringify(error.details);
+      }
+      throw new Error(errorMsg);
     }
     const data = await res.json();
     console.log('[roomsService.create] Success:', data);
@@ -230,7 +234,11 @@ export const roomsService = {
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       console.error('[roomsService.update] Error:', error);
-      throw new Error(error.error || 'Failed to update room');
+      let errorMsg = error.error || 'Failed to update room';
+      if (error.details) {
+        errorMsg += ': ' + JSON.stringify(error.details);
+      }
+      throw new Error(errorMsg);
     }
     const data = await res.json();
     console.log('[roomsService.update] Success:', data);

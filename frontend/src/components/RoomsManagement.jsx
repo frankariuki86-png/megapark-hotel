@@ -68,17 +68,44 @@ const RoomsManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields on frontend first
+    if (!formData.name || !formData.name.trim()) {
+      setError('Room name is required');
+      return;
+    }
+    if (!formData.roomNumber || !formData.roomNumber.trim()) {
+      setError('Room number is required');
+      return;
+    }
+    if (!formData.type) {
+      setError('Room type is required');
+      return;
+    }
+    if (formData.pricePerNight === undefined || formData.pricePerNight === null || formData.pricePerNight === '') {
+      setError('Price per night is required');
+      return;
+    }
+    if (formData.capacity === undefined || formData.capacity === null || formData.capacity === '') {
+      setError('Capacity is required');
+      return;
+    }
+    
     try {
+      setError(null);
       if (editingId) {
+        console.log('[RoomsManagement] Updating room:', editingId, 'with data:', formData, 'and files:', imageFiles.length);
         await roomsService.update(editingId, formData, imageFiles);
       } else {
+        console.log('[RoomsManagement] Creating room with data:', formData, 'and files:', imageFiles.length);
         await roomsService.create(formData, imageFiles);
       }
       await fetchRooms();
       setShowForm(false);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      console.error('[RoomsManagement] Submit error:', err);
+      setError(err.message || 'Failed to save room');
     }
   };
 
