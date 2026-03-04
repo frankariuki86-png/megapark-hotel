@@ -5,6 +5,25 @@ const { RoomCreateSchema, RoomUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   logger.info('[roomsRouter] Exported function called');
+
+  // Helper to normalize room data from DB (snake_case) to standard camelCase format
+  const normalizeDbRoom = (room) => {
+    if (!room) return room;
+    return {
+      id: room.id,
+      roomNumber: room.room_number || room.roomNumber || '',
+      name: room.name,
+      type: room.type,
+      description: room.description || '',
+      pricePerNight: room.price_per_night !== undefined ? room.price_per_night : (room.pricePerNight || 0),
+      capacity: room.capacity || 2,
+      amenities: Array.isArray(room.amenities) ? room.amenities : (typeof room.amenities === 'string' ? JSON.parse(room.amenities) : []),
+      availability: room.availability !== undefined ? room.availability : true,
+      images: Array.isArray(room.images) ? room.images : (typeof room.images === 'string' ? JSON.parse(room.images) : []),
+      createdAt: room.created_at || room.createdAt || '',
+      updatedAt: room.updated_at || room.updatedAt || ''
+    };
+  };
   
   // Test endpoint to verify router is mounted
   router.get('/test', (req, res) => {
@@ -22,7 +41,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
           const { rows } = await pgClient.query('SELECT * FROM rooms ORDER BY created_at DESC');
           logger.info('GET /api/rooms - DB query successful, rows:', rows.length);
 
-          // add any JSON fallback entries not yet persisted in the database
+          // add any JSON fallback items not yet persisted in the database
           const jsonRooms = readJSON(roomsPath, []);
           if (jsonRooms && jsonRooms.length) {
             const dbIds = new Set(rows.map(r => r.id));
@@ -33,13 +52,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             }
           }
 
-          // ensure all rooms have availability set to true
-          const roomsWithAvailability = rows.map(r => ({
-            ...r,
-            availability: r.availability !== undefined ? r.availability : true
-          }));
-
-          return res.json(roomsWithAvailability);
+          // normalize all rooms to camelCase format
+          const normalized = rows.map(r => normalizeDbRoom(r));
+          return res.json(normalized);
         } catch (dbErr) {
           logger.warn('GET /api/rooms - DB query failed, falling back to JSON:', dbErr.message);
         }
@@ -105,10 +120,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         const q = `INSERT INTO rooms (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const { rows } = await pgClient.query(q, values);
         const room = rows[0];
-        return res.status(201).json({
-          ...room,
-          availability: room.availability !== undefined ? room.availability : true
-        });
+        // normalize DB response to camelCase format
+        return res.status(201).json(normalizeDbRoom(room));
       }
       const rooms = readJSON(roomsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
@@ -179,10 +192,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
               // not in DB, fall back to JSON below
               useDB = false;
             } else {
-              return res.json({
-                ...rows[0],
-                availability: rows[0].availability !== undefined ? rows[0].availability : true
-              });
+              // normalize DB response to camelCase format
+              return res.json(normalizeDbRoom(rows[0]));
             }
           }
         } catch (dbErr) {

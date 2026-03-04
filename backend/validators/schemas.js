@@ -146,7 +146,7 @@ const BookingCreateSchema = z.object({
   paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).default('pending'),
   paymentData: z.record(z.any()).optional(),
   status: z.enum(['booked', 'confirmed', 'cancelled', 'completed']).default('booked')
-});
+}).passthrough();
 
 const BookingUpdateSchema = z.object({
   status: z.enum(['booked', 'confirmed', 'cancelled', 'completed']).optional(),

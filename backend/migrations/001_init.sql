@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS rooms (
   amenities text[],
   images text[],
   availability boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS bookings (

@@ -5,12 +5,49 @@ const { BookingCreateSchema, BookingUpdateSchema } = require('../validators/sche
 const { sendRoomBookingConfirmationEmail, sendHallBookingConfirmationEmail } = require('../services/emailService');
 
 module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
+  // Helper to normalize booking data from DB (snake_case) to standard camelCase format
+  const normalizeDbBooking = (booking) => {
+    if (!booking) return booking;
+    
+    // Parse booking_data JSON if it's a string
+    let bookingData = booking.booking_data;
+    if (typeof bookingData === 'string') {
+      try {
+        bookingData = JSON.parse(bookingData);
+      } catch (e) {
+        bookingData = {};
+      }
+    }
+    if (!bookingData) bookingData = {};
+
+    return {
+      id: booking.id,
+      guestName: booking.customer_name || booking.customerName || '',
+      email: booking.customer_email || booking.customerEmail || '',
+      phone: booking.customer_phone || booking.customerPhone || '',
+      roomName: bookingData.roomName || bookingData.room_name || '',
+      roomId: bookingData.roomId || bookingData.room_id || '',
+      checkIn: bookingData.checkIn || bookingData.check_in || '',
+      checkOut: bookingData.checkOut || bookingData.check_out || '',
+      nights: bookingData.nights || 0,
+      guests: bookingData.guests || 0,
+      totalPrice: booking.total || booking.totalPrice || 0,
+      status: booking.status || 'booked',
+      paymentStatus: booking.payment_status || booking.paymentStatus || 'pending',
+      bookingType: booking.booking_type || booking.bookingType || 'room',
+      createdAt: booking.created_at || booking.createdAt || '',
+      updatedAt: booking.updated_at || booking.updatedAt || ''
+    };
+  };
+
   // GET - list bookings (protected)
   router.get('/', authenticate, async (req, res) => {
     try {
       if (pgClient) {
         const { rows } = await pgClient.query('SELECT * FROM bookings ORDER BY created_at DESC');
-        return res.json(rows);
+        // normalize all bookings
+        const normalized = rows.map(b => normalizeDbBooking(b));
+        return res.json(normalized);
       }
       const bookings = readJSON(bookingsPath, []);
       return res.json(bookings);
@@ -75,7 +112,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
           logger.warn(`Booking confirmation email failed: ${emailErr.message}`);
         }
 
-        return res.status(201).json(rows[0]);
+        // Normalize and return the created booking
+        return res.status(201).json(normalizeDbBooking(rows[0]));
       }
 
       const bookings = readJSON(bookingsPath, []);
@@ -141,7 +179,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
         values.push(id);
         const { rows } = await pgClient.query(q, values);
         if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-        return res.json(rows[0]);
+        // Normalize and return the updated booking
+        return res.json(normalizeDbBooking(rows[0]));
       }
 
       const bookings = readJSON(bookingsPath, []);

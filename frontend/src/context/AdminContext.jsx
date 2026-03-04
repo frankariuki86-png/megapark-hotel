@@ -28,7 +28,7 @@ export const AdminProvider = ({ children }) => {
       name: room.name,
       type: room.type,
       description: room.description || '',
-      pricePerNight: room.price_per_night || room.pricePerNight || 0,
+      pricePerNight: room.price_per_night !== undefined ? room.price_per_night : (room.pricePerNight !== undefined ? room.pricePerNight : 0),
       capacity: room.capacity || 2,
       amenities: room.amenities || [],
       availability: room.availability !== undefined ? room.availability : true,
@@ -62,10 +62,10 @@ export const AdminProvider = ({ children }) => {
               return {
                 id: b.id,
                 roomId: roomId,
-                roomName: room.name || bd.roomName || bd.room || b.roomName || '',
-                guestName: b.customer_name || b.customerName || '',
-                email: b.customer_email || b.customerEmail || '',
-                phone: b.customer_phone || b.customerPhone || '',
+                roomName: b.roomName || room.name || bd.roomName || bd.room || '',
+                guestName: b.guestName || b.customer_name || b.customerName || '',
+                email: b.email || b.customer_email || b.customerEmail || '',
+                phone: b.phone || b.customer_phone || b.customerPhone || '',
                 checkIn: bd.checkIn || bd.check_in || b.check_in || b.checkIn || '',
                 checkOut: bd.checkOut || bd.check_out || b.check_out || b.checkOut || '',
                 nights: bd.nights || b.nights || 0,
@@ -280,8 +280,8 @@ export const AdminProvider = ({ children }) => {
             return {
               id: b.id,
               roomId: b.room_id || b.roomId || '',
-              roomName: room ? room.name : '',
-              guestName: b.guest_name || b.guestName || '',
+              roomName: b.roomName || (room ? room.name : ''),
+              guestName: b.guestName || b.guest_name || '',
               email: b.email || '',
               phone: b.phone || '',
               checkIn: b.check_in || b.checkIn || '',
@@ -360,7 +360,8 @@ export const AdminProvider = ({ children }) => {
   }, []);
 
   // Booking Management
-  const updateBooking = useCallback((bookingId, updates) => {
+  const updateBooking = useCallback(async (bookingId, updates) => {
+    // optimistically update local state
     setBookings(prev =>
       prev.map(booking =>
         booking.id === bookingId
@@ -368,9 +369,16 @@ export const AdminProvider = ({ children }) => {
           : booking
       )
     );
+    // send update to backend to persist
+    try {
+      await updateBookingApi(bookingId, updates);
+    } catch (err) {
+      console.warn('[AdminContext] updateBooking API error', err.message || err);
+      // could optionally refetch bookings here
+    }
   }, []);
 
-  const cancelBooking = useCallback((bookingId) => {
+  const cancelBooking = useCallback(async (bookingId) => {
     setBookings(prev =>
       prev.map(booking =>
         booking.id === bookingId
@@ -378,6 +386,11 @@ export const AdminProvider = ({ children }) => {
           : booking
       )
     );
+    try {
+      await updateBookingApi(bookingId, { status: 'cancelled' });
+    } catch (err) {
+      console.warn('[AdminContext] cancelBooking API error', err.message || err);
+    }
   }, []);
 
   // Event Management

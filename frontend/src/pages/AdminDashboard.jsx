@@ -28,7 +28,7 @@ const AdminDashboard = () => {
   const [roomSearch, setRoomSearch] = useState('');
   const [newMenuItem, setNewMenuItem] = useState({ name: '', description: '', category: 'mains', price: '', preparationTime: 15 });
   const [newHall, setNewHall] = useState({ name: '', description: '', capacity: '', pricePerDay: '', amenities: [], images: [] });
-  const [newRoom, setNewRoom] = useState({ roomNumber: '', name: '', type: 'standard', description: '', pricePerNight: '', capacity: 2, amenities: [], images: [] });
+  const [newRoom, setNewRoom] = useState({ roomNumber: '', name: '', type: 'standard', description: '', pricePerNight: 0, capacity: 2, amenities: [], images: [] });
   const [editingMenuItem, setEditingMenuItem] = useState(null);
   const [editingValues, setEditingValues] = useState({});
   const [editingHallValues, setEditingHallValues] = useState({});
@@ -423,7 +423,7 @@ const AdminDashboard = () => {
                     type="number"
                     placeholder="Price Per Night (KES)"
                     value={newRoom.pricePerNight}
-                    onChange={(e) => setNewRoom({...newRoom, pricePerNight: parseFloat(e.target.value) || ''})}
+                    onChange={(e) => setNewRoom({...newRoom, pricePerNight: e.target.value ? parseFloat(e.target.value) : 0})}
                   />
                   <input
                     type="number"
@@ -442,7 +442,7 @@ const AdminDashboard = () => {
                   if (newRoom.roomNumber && newRoom.name && newRoom.pricePerNight) {
                     addRoom(newRoom);
                     pushToast('Room added', 'success');
-                    setNewRoom({ roomNumber: '', name: '', type: 'standard', description: '', pricePerNight: '', capacity: 2, amenities: [], images: [] });
+                    setNewRoom({ roomNumber: '', name: '', type: 'standard', description: '', pricePerNight: 0, capacity: 2, amenities: [], images: [] });
                     setShowAddRoom(false);
                   } else {
                     pushToast('Please provide room number, name and price', 'error');
@@ -469,7 +469,7 @@ const AdminDashboard = () => {
                         <option value="executive">Executive</option>
                       </select>
                       <textarea value={editingRoomValues.description || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, description: e.target.value}))} placeholder="Description" />
-                      <input type="number" value={editingRoomValues.pricePerNight || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, pricePerNight: parseFloat(e.target.value)}))} placeholder="Price Per Night" />
+                      <input type="number" value={editingRoomValues.pricePerNight || 0} onChange={(e)=>setEditingRoomValues(prev=>({...prev, pricePerNight: e.target.value ? parseFloat(e.target.value) : 0}))} placeholder="Price Per Night" />
                       <input type="number" value={editingRoomValues.capacity || ''} onChange={(e)=>setEditingRoomValues(prev=>({...prev, capacity: parseInt(e.target.value)}))} placeholder="Capacity" />
                       <div className="edit-actions">
                         <button className="action-btn confirm" onClick={() => {
