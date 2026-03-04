@@ -85,6 +85,15 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       if (body.capacity) body.capacity = parseInt(body.capacity, 10);
       if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
       
+      // Parse JSON strings from FormData
+      if (body.amenities && typeof body.amenities === 'string') {
+        try {
+          body.amenities = JSON.parse(body.amenities);
+        } catch (e) {
+          body.amenities = [];
+        }
+      }
+      
       if (body.price !== undefined && body.pricePerNight === undefined) {
         body.pricePerNight = parseFloat(body.price);
         delete body.price;
@@ -172,6 +181,15 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       if (body.pricePerNight) body.pricePerNight = parseFloat(body.pricePerNight);
       if (body.capacity) body.capacity = parseInt(body.capacity, 10);
       if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
+      
+      // Parse JSON strings from FormData
+      if (body.amenities && typeof body.amenities === 'string') {
+        try {
+          body.amenities = JSON.parse(body.amenities);
+        } catch (e) {
+          body.amenities = [];
+        }
+      }
       
       if (body.price !== undefined && body.pricePerNight === undefined) {
         body.pricePerNight = parseFloat(body.price);

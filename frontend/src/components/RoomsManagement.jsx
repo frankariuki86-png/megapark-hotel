@@ -44,14 +44,15 @@ const RoomsManagement = () => {
       type: 'standard',
       description: '',
       roomNumber: '',
-      pricePerNight: 0,
-      capacity: 1,
+      pricePerNight: 5000,
+      capacity: 2,
       amenities: [],
       images: [],
       availability: true
     });
     setImageFiles([]);
     setEditingId(null);
+    setError(null);
     setShowForm(true);
   };
 
@@ -130,7 +131,7 @@ const RoomsManagement = () => {
         <button className="btn btn-primary" onClick={handleAddNew}>+ Add Room</button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <div className="error-message">❌ {error}</div>}
 
       {showForm && (
         <form className="admin-form" onSubmit={handleSubmit}>
@@ -164,8 +165,10 @@ const RoomsManagement = () => {
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
               >
                 <option value="standard">Standard</option>
+                <option value="double">Double</option>
                 <option value="deluxe">Deluxe</option>
                 <option value="suite">Suite</option>
+                <option value="executive">Executive</option>
               </select>
             </div>
           </div>
@@ -184,6 +187,8 @@ const RoomsManagement = () => {
               <label>Price Per Night (KES) *</label>
               <input
                 type="number"
+                min="0"
+                step="100"
                 value={formData.pricePerNight || 0}
                 onChange={(e) => setFormData({...formData, pricePerNight: parseFloat(e.target.value) || 0})}
                 required
@@ -191,12 +196,14 @@ const RoomsManagement = () => {
             </div>
 
             <div className="form-group">
-              <label>Capacity *</label>
+              <label>Capacity * (guests)</label>
               <input
                 type="number"
                 min="1"
+                max="10"
                 value={formData.capacity || 1}
                 onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value) || 1})}
+                required
               />
             </div>
 
@@ -220,6 +227,7 @@ const RoomsManagement = () => {
                   type="file"
                   multiple
                   accept="image/*"
+                  required={!editingId}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []).slice(0, 5);
                     setImageFiles(files);
