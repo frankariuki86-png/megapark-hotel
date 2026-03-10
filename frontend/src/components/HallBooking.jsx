@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { hallsService } from '../services/adminService';
 import Button from './ui/Button';
 import '../styles/hallbooking.css';
 
@@ -91,43 +92,29 @@ const HallBooking = () => {
     }
   ];
 
-  const API_BASE_URL = getApiBaseUrl();
-  React.useEffect(() => {
-    console.log('[HallBooking] API_BASE_URL:', API_BASE_URL);
-  }, [API_BASE_URL]);
-
   // Fetch halls from API on component mount
   useEffect(() => {
     const fetchHalls = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE_URL}/halls`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const hallsList = Array.isArray(data) ? data : data.data || fallbackHalls;
-          setHalls(hallsList.map(hall => ({
-            ...hall,
-            capacity: hall.capacity || 100,
-            area: hall.area || '200 sq meters',
-            basePrice: hall.basePrice || hall.pricePerDay || hall.price || 15000,
-            image: resolveMediaUrl(hall.image) || (Array.isArray(hall.images) && hall.images.length > 0 ? resolveMediaUrl(hall.images[0]) : getImagePath('mega-park4.jfif')),
-            packages: Array.isArray(hall.packages) && hall.packages.length > 0 ? hall.packages.map(pkg => ({
-              ...pkg,
-              price: parseInt(pkg.price) || parseInt(pkg.basePrice) || 15000,
-              includes: Array.isArray(pkg.includes) ? pkg.includes : ['Venue Rental', 'Tables & Chairs']
-            })) : [
-              { id: 'pkg-basic', name: 'Basic', price: parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000, includes: ['Venue Rental', 'Tables & Chairs', 'Basic Setup'] },
-              { id: 'pkg-standard', name: 'Standard', price: (parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000) * 1.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full Setup', 'Sound System'] },
-              { id: 'pkg-premium', name: 'Premium', price: (parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000) * 2.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full AV Setup', 'Sound System', 'Event Coordinator'] }
-            ]
-          })));
-        } else {
-          setHalls(fallbackHalls);
-        }
+        const data = await hallsService.getAll();
+        const hallsList = Array.isArray(data) ? data : data?.data || fallbackHalls;
+        setHalls(hallsList.map(hall => ({
+          ...hall,
+          capacity: hall.capacity || 100,
+          area: hall.area || '200 sq meters',
+          basePrice: hall.basePrice || hall.pricePerDay || hall.price || 15000,
+          image: resolveMediaUrl(hall.image) || (Array.isArray(hall.images) && hall.images.length > 0 ? resolveMediaUrl(hall.images[0]) : getImagePath('mega-park4.jfif')),
+          packages: Array.isArray(hall.packages) && hall.packages.length > 0 ? hall.packages.map(pkg => ({
+            ...pkg,
+            price: parseInt(pkg.price) || parseInt(pkg.basePrice) || 15000,
+            includes: Array.isArray(pkg.includes) ? pkg.includes : ['Venue Rental', 'Tables & Chairs']
+          })) : [
+            { id: 'pkg-basic', name: 'Basic', price: parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000, includes: ['Venue Rental', 'Tables & Chairs', 'Basic Setup'] },
+            { id: 'pkg-standard', name: 'Standard', price: (parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000) * 1.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full Setup', 'Sound System'] },
+            { id: 'pkg-premium', name: 'Premium', price: (parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000) * 2.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full AV Setup', 'Sound System', 'Event Coordinator'] }
+          ]
+        })));
       } catch (error) {
         console.warn('Failed to fetch halls from API, using fallback:', error);
         setHalls(fallbackHalls);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { roomsService } from '../services/adminService';
 // Payment will be handled on a dedicated payment page
 import ImageGallery from './ImageGallery';
 import ReviewSection from './ReviewSection';
@@ -82,38 +83,24 @@ const RoomBooking = () => {
     }
   ];
 
-  const API_BASE_URL = getApiBaseUrl();
-  React.useEffect(() => {
-    console.log('[RoomBooking] API_BASE_URL:', API_BASE_URL);
-  }, [API_BASE_URL]);
-
   // Fetch rooms from API on component mount
   useEffect(() => {
     const fetchRooms = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE_URL}/rooms`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const roomsList = Array.isArray(data) ? data : data.data || fallbackRooms;
-          setRooms(roomsList.map(room => ({
-            ...room,
-            price: parseInt(room.price || room.pricePerNight) || 5000,
-            capacity: parseInt(room.capacity) || 2,
-            image: resolveMediaUrl(room.image) || (Array.isArray(room.images) && room.images.length > 0 ? resolveMediaUrl(room.images[0]) : getImagePath('home1.jfif')),
-            images: Array.isArray(room.images)
-              ? room.images.map(resolveMediaUrl).filter(Boolean)
-              : (room.image ? [resolveMediaUrl(room.image)] : [getImagePath('home1.jfif')]),
-            amenities: Array.isArray(room.amenities) && room.amenities.length > 0 ? room.amenities : ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom'],
-            description: room.description || 'Premium accommodation at Megapark Resort'
-          })));
-        } else {
-          setRooms(fallbackRooms);
-        }
+        const data = await roomsService.getAll();
+        const roomsList = Array.isArray(data) ? data : data?.data || fallbackRooms;
+        setRooms(roomsList.map(room => ({
+          ...room,
+          price: parseInt(room.price || room.pricePerNight) || 5000,
+          capacity: parseInt(room.capacity) || 2,
+          image: resolveMediaUrl(room.image) || (Array.isArray(room.images) && room.images.length > 0 ? resolveMediaUrl(room.images[0]) : getImagePath('home1.jfif')),
+          images: Array.isArray(room.images)
+            ? room.images.map(resolveMediaUrl).filter(Boolean)
+            : (room.image ? [resolveMediaUrl(room.image)] : [getImagePath('home1.jfif')]),
+          amenities: Array.isArray(room.amenities) && room.amenities.length > 0 ? room.amenities : ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom'],
+          description: room.description || 'Premium accommodation at Megapark Resort'
+        })));
       } catch (error) {
         console.warn('Failed to fetch rooms from API, using fallback:', error);
         setRooms(fallbackRooms);
