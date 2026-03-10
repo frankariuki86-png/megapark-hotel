@@ -687,3 +687,46 @@ server.on('error', (err) => {
   }
   process.exit(1);
 });
+
+// Global process handlers to improve crash diagnostics and shutdown behavior
+let isShuttingDown = false;
+
+const closeServerAndExit = (exitCode) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  try {
+    server.close((err) => {
+      if (err) {
+        logger.error('Error while closing server:', err.message || err);
+      }
+      process.exit(exitCode);
+    });
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout');
+      process.exit(exitCode);
+    }, 10000).unref();
+  } catch (e) {
+    logger.error('Fatal during shutdown:', e.message || e);
+    process.exit(exitCode);
+  }
+};
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error({ reason, promise }, 'Unhandled promise rejection');
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error({ err: error, stack: error?.stack }, 'Uncaught exception');
+  closeServerAndExit(1);
+});
+
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  closeServerAndExit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  closeServerAndExit(0);
+});
