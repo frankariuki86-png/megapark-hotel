@@ -75,7 +75,7 @@ const RoomBooking = () => {
     const envUrl = import.meta.env.VITE_API_URL;
     if (envUrl) {
       const base = envUrl.replace(/\/$/, '');
-      return `${base}/api`;
+      return base.endsWith('/api') ? base : `${base}/api`;
     }
     if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
       return '/api';

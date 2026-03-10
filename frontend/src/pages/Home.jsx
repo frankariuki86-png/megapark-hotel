@@ -16,7 +16,7 @@ const API_BASE_URL = (() => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
     const base = envUrl.replace(/\/$/, '');
-    return `${base}/api`;
+    return base.endsWith('/api') ? base : `${base}/api`;
   }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return '/api';
@@ -219,8 +219,12 @@ const Home = () => {
                   <div><label>Email</label><input name="email" type="email" required /></div>
                 </div>
                 <div style={{ marginTop: 12 }}>
+                  <label>Phone Number</label>
+                  <input name="phone" type="tel" placeholder="+254 7xx xxx xxx" required />
+                </div>
+                <div style={{ marginTop: 12 }}>
                   <label>Message</label>
-                  <textarea name="message" rows={4} />
+                  <textarea name="message" rows={4} required />
                 </div>
                 <button className="btn" type="submit" style={{ marginTop: 12 }}>Send Message</button>
               </form>
