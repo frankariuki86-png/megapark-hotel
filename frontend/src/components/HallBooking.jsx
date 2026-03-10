@@ -7,6 +7,18 @@ import '../styles/hallbooking.css';
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    const base = envUrl.replace(/\/$/, '');
+    return base.endsWith('/api') ? base : `${base}/api`;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return '/api';
+  }
+  return 'http://localhost:3000/api';
+};
+
 const resolveMediaUrl = (url) => {
   if (!url || typeof url !== 'string') return '';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
@@ -79,18 +91,6 @@ const HallBooking = () => {
     }
   ];
 
-  // Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
-  const getApiBaseUrl = () => {
-    const envUrl = import.meta.env.VITE_API_URL;
-    if (envUrl) {
-      const base = envUrl.replace(/\/$/, '');
-      return base.endsWith('/api') ? base : `${base}/api`;
-    }
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return '/api';
-    }
-    return 'http://localhost:3000/api';
-  };
   const API_BASE_URL = getApiBaseUrl();
   React.useEffect(() => {
     console.log('[HallBooking] API_BASE_URL:', API_BASE_URL);

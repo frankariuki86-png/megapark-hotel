@@ -7,6 +7,17 @@ const { RoomCreateSchema, RoomUpdateSchema } = require('../validators/schemas');
 module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   logger.info('[roomsRouter] Exported function called');
 
+  const parseJsonArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   // Helper to normalize room data from DB (snake_case) to standard camelCase format
   const normalizeDbRoom = (room) => {
     if (!room) return room;
@@ -18,9 +29,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       description: room.description || '',
       pricePerNight: room.price_per_night !== undefined ? room.price_per_night : (room.pricePerNight || 0),
       capacity: room.capacity || 2,
-      amenities: Array.isArray(room.amenities) ? room.amenities : (typeof room.amenities === 'string' ? JSON.parse(room.amenities) : []),
+      amenities: parseJsonArray(room.amenities),
       availability: room.availability !== undefined ? room.availability : true,
-      images: Array.isArray(room.images) ? room.images : (typeof room.images === 'string' ? JSON.parse(room.images) : []),
+      images: parseJsonArray(room.images),
       createdAt: room.created_at || room.createdAt || '',
       updatedAt: room.updated_at || room.updatedAt || ''
     };
