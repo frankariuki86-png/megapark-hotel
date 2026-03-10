@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../services/adminService';
+import { bookingsService, ordersService } from '../services/adminService';
 import '../styles/admin-management.css';
 
 const RequestsManagement = () => {
@@ -18,8 +18,8 @@ const RequestsManagement = () => {
       setLoading(true);
       setError(null);
       const [bookingsData, ordersData] = await Promise.all([
-        adminService.bookingsService.getAll().catch(() => []),
-        adminService.ordersService.getAll().catch(() => [])
+        bookingsService.getAll().catch(() => []),
+        ordersService.getAll().catch(() => [])
       ]);
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
@@ -34,7 +34,7 @@ const RequestsManagement = () => {
 
   const handleApproveBooking = async (id) => {
     try {
-      await adminService.bookingsService.update(id, { status: 'approved' });
+      await bookingsService.update(id, { status: 'confirmed' });
       await fetchRequests();
       setError(null);
     } catch (err) {
@@ -44,7 +44,7 @@ const RequestsManagement = () => {
 
   const handleRejectBooking = async (id) => {
     try {
-      await adminService.bookingsService.update(id, { status: 'rejected' });
+      await bookingsService.update(id, { status: 'cancelled' });
       await fetchRequests();
       setError(null);
     } catch (err) {
@@ -54,7 +54,7 @@ const RequestsManagement = () => {
 
   const handleApproveOrder = async (id) => {
     try {
-      await adminService.ordersService.update(id, { status: 'approved' });
+      await ordersService.update(id, { status: 'confirmed' });
       await fetchRequests();
       setError(null);
     } catch (err) {
@@ -64,7 +64,7 @@ const RequestsManagement = () => {
 
   const handleRejectOrder = async (id) => {
     try {
-      await adminService.ordersService.update(id, { status: 'rejected' });
+      await ordersService.update(id, { status: 'cancelled' });
       await fetchRequests();
       setError(null);
     } catch (err) {
@@ -85,8 +85,8 @@ const RequestsManagement = () => {
   const getStatusBadge = (status) => {
     const statusMap = {
       pending: { color: '#ff9800', label: 'Pending' },
-      approved: { color: '#4caf50', label: 'Approved' },
-      rejected: { color: '#f44336', label: 'Rejected' },
+      confirmed: { color: '#4caf50', label: 'Confirmed' },
+      cancelled: { color: '#f44336', label: 'Cancelled' },
       completed: { color: '#2196f3', label: 'Completed' }
     };
     const style = statusMap[status] || statusMap.pending;
@@ -155,17 +155,26 @@ const RequestsManagement = () => {
               </thead>
               <tbody>
                 {bookings.map(booking => {
-                  const bookingData = typeof booking.booking_data === 'string' ? JSON.parse(booking.booking_data) : booking.booking_data || {};
+                  const rawBookingData = booking.bookingData || booking.booking_data || {};
+                  const bookingData = typeof rawBookingData === 'string'
+                    ? (() => {
+                        try {
+                          return JSON.parse(rawBookingData);
+                        } catch {
+                          return {};
+                        }
+                      })()
+                    : rawBookingData;
                   return (
                     <tr key={booking.id}>
                       <td>{booking.id}</td>
-                      <td>{booking.customer_name || 'N/A'}</td>
-                      <td>{booking.customer_email || 'N/A'}</td>
-                      <td>{booking.customer_phone || 'N/A'}</td>
-                      <td>{bookingData.roomName || 'Standard Room'}</td>
-                      <td>{formatDate(bookingData.checkInDate)}</td>
-                      <td>{formatDate(bookingData.checkOutDate)}</td>
-                      <td>KES {booking.total ? parseInt(booking.total).toLocaleString() : '0'}</td>
+                      <td>{booking.guestName || booking.customerName || booking.customer_name || 'N/A'}</td>
+                      <td>{booking.email || booking.customerEmail || booking.customer_email || 'N/A'}</td>
+                      <td>{booking.phone || booking.customerPhone || booking.customer_phone || 'N/A'}</td>
+                      <td>{booking.roomName || bookingData.roomName || 'Standard Room'}</td>
+                      <td>{booking.checkIn ? formatDate(booking.checkIn) : '-'}</td>
+                      <td>{booking.checkOut ? formatDate(booking.checkOut) : '-'}</td>
+                      <td>KES {(booking.totalPrice || booking.total || 0).toLocaleString()}</td>
                       <td>{getStatusBadge(booking.status)}</td>
                       <td className="actions">
                         {booking.status === 'pending' && (

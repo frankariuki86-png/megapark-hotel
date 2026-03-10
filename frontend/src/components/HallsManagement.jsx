@@ -6,8 +6,10 @@ const HallsManagement = () => {
   const [halls, setHalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [amenitiesInput, setAmenitiesInput] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -46,35 +48,68 @@ const HallsManagement = () => {
       availability: true,
       amenities: []
     });
+    setAmenitiesInput('');
     setImageFiles([]);
     setEditingId(null);
+    setError(null);
+    setSuccess(null);
     setShowForm(true);
   };
 
   const handleEdit = (hall) => {
+    const existingAmenities = Array.isArray(hall.amenities) ? hall.amenities : [];
     setFormData({
-      ...hall,
+      name: hall.name || '',
+      description: hall.description || '',
       capacity: Number(hall.capacity) || 100,
-      pricePerDay: Number(hall.pricePerDay) || 0
+      pricePerDay: Number(hall.pricePerDay || hall.price_per_day) || 0,
+      images: Array.isArray(hall.images) ? hall.images : [],
+      availability: hall.availability !== undefined ? hall.availability : true,
+      amenities: existingAmenities
     });
+    setAmenitiesInput(existingAmenities.join(', '));
     setImageFiles([]);
     setEditingId(hall.id);
+    setError(null);
+    setSuccess(null);
     setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Parse amenities from the text field
+    const parsedAmenities = amenitiesInput
+      .split(',')
+      .map(a => a.trim())
+      .filter(a => a.length > 0);
+
+    const payload = {
+      name: formData.name,
+      description: formData.description || '',
+      capacity: Number(formData.capacity) || 0,
+      pricePerDay: Number(formData.pricePerDay) || 0,
+      images: Array.isArray(formData.images) ? formData.images : [],
+      availability: formData.availability !== undefined ? formData.availability : true,
+      amenities: parsedAmenities
+    };
+
     try {
+      setError(null);
+      setSuccess(null);
       if (editingId) {
-        await hallsService.update(editingId, formData);
+        console.log('[HallsManagement] Updating hall:', editingId, 'with data:', payload);
+        await hallsService.update(editingId, payload);
+        setSuccess('Hall updated successfully!');
       } else {
-        await hallsService.create(formData);
+        console.log('[HallsManagement] Creating hall with data:', payload);
+        await hallsService.create(payload);
+        setSuccess('Hall created successfully!');
       }
       await fetchHalls();
       setShowForm(false);
-      setError(null);
     } catch (err) {
-      setError(err.message);
+      console.error('[HallsManagement] Submit error:', err);
+      setError(err.message || 'Failed to save hall');
     }
   };
 
@@ -84,6 +119,7 @@ const HallsManagement = () => {
         await hallsService.delete(id);
         await fetchHalls();
         setError(null);
+        setSuccess('Hall deleted.');
       } catch (err) {
         setError(err.message);
       }
@@ -99,7 +135,8 @@ const HallsManagement = () => {
         <button className="btn btn-primary" onClick={handleAddNew}>+ Add Hall</button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <div className="error-message">❌ {error}</div>}
+      {success && <div className="success-message" style={{background:'#e8f5e9',color:'#2e7d32',padding:'10px 16px',borderRadius:'6px',marginBottom:'12px'}}>✅ {success}</div>}
 
       {showForm && (
         <form className="admin-form" onSubmit={handleSubmit}>
@@ -140,11 +177,32 @@ const HallsManagement = () => {
               <label>Price Per Day (KES) *</label>
               <input
                 type="number"
+                min="0"
+                step="500"
                 value={formData.pricePerDay || 0}
                 onChange={(e) => setFormData({...formData, pricePerDay: parseFloat(e.target.value) || 0})}
                 required
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>Amenities (comma-separated)</label>
+            <input
+              type="text"
+              value={amenitiesInput}
+              onChange={(e) => setAmenitiesInput(e.target.value)}
+              placeholder="e.g. AC, WiFi, Projector, Sound System"
+            />
+            {amenitiesInput && (
+              <div style={{marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
+                {amenitiesInput.split(',').map(a => a.trim()).filter(a => a).map((a, i) => (
+                  <span key={i} style={{background:'#e3f2fd',color:'#1565c0',padding:'2px 10px',borderRadius:'12px',fontSize:'12px'}}>
+                    {a}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="form-group">

@@ -54,7 +54,12 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
           }
 
           // normalize all rooms to camelCase format
-          const normalized = rows.map(r => normalizeDbRoom(r));
+          // merge with any fallback JSON entries that may have extra fields
+          const normalized = rows.map(r => {
+            const base = normalizeDbRoom(r);
+            const extra = jsonRooms.find(j => j.id === r.id);
+            return extra ? { ...base, ...extra } : base;
+          });
           return res.json(normalized);
         } catch (dbErr) {
           logger.warn('GET /api/rooms - DB query failed, falling back to JSON:', dbErr.message);
@@ -152,8 +157,20 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         const q = `INSERT INTO rooms (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const { rows } = await pgClient.query(q, values);
         const room = rows[0];
+        logger.info('POST /api/rooms - DB columns detected:', existingCols);
         // normalize DB response to camelCase format
-        return res.status(201).json(normalizeDbRoom(room));
+        const normalized = normalizeDbRoom(room);
+        // also write payload to JSON fallback so we can merge on future GETs
+        try {
+          const roomsFile = readJSON(roomsPath, []);
+          const createdPayload = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
+          roomsFile.unshift(createdPayload);
+          writeJSON(roomsPath, roomsFile);
+        } catch (e) {
+          logger.warn('POST /api/rooms - failed to update JSON fallback', e.message);
+        }
+        // return merged object so client sees what was submitted even if DB dropped some fields
+        return res.status(201).json({ ...normalized, ...payload });
       }
       const rooms = readJSON(roomsPath, []);
       const created = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
@@ -255,7 +272,22 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
               useDB = false;
             } else {
               // normalize DB response to camelCase format
-              return res.json(normalizeDbRoom(rows[0]));
+              const room = normalizeDbRoom(rows[0]);
+              // update JSON fallback copy so UI will see the same values even if DB drops columns
+              try {
+                const roomsFile = readJSON(roomsPath, []);
+                const existingIndex = roomsFile.findIndex(r => r.id === id);
+                const updatedPayload = { id, ...payload, updatedAt: new Date().toISOString() };
+                if (existingIndex >= 0) {
+                  roomsFile[existingIndex] = { ...roomsFile[existingIndex], ...updatedPayload };
+                } else {
+                  roomsFile.unshift(updatedPayload);
+                }
+                writeJSON(roomsPath, roomsFile);
+              } catch (e) {
+                logger.warn('PUT /api/rooms - failed to update JSON fallback', e.message);
+              }
+              return res.json({ ...room, ...payload });
             }
           }
         } catch (dbErr) {

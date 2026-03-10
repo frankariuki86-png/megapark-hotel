@@ -161,9 +161,9 @@ const AdminDashboard = () => {
   // Overview Statistics
   const totalBookings = bookings.length;
   const totalOrders = foodOrders.length;
-  const totalRevenue = bookings.reduce((sum, b) => sum + (b.paymentStatus === 'paid' ? b.totalPrice : 0), 0) +
-                       events.reduce((sum, e) => sum + (e.paymentStatus === 'paid' ? e.totalPrice : 0), 0) +
-                       foodOrders.reduce((sum, o) => sum + (o.paymentStatus === 'paid' ? (o.totalAmount || o.total_price || 0) : 0), 0);
+  const totalRevenue = bookings.reduce((sum, b) => sum + (b.paymentStatus === 'paid' ? Number(b.totalPrice || b.total || 0) : 0), 0) +
+                       events.reduce((sum, e) => sum + (e.paymentStatus === 'paid' ? Number(e.totalPrice || 0) : 0), 0) +
+                       foodOrders.reduce((sum, o) => sum + (o.paymentStatus === 'paid' ? (Number(o.totalAmount || o.total_price || 0)) : 0), 0);
   const pendingPayments = bookings.filter(b => b.paymentStatus === 'pending').length +
                           events.filter(e => e.paymentStatus === 'pending').length +
                           foodOrders.filter(o => o.paymentStatus === 'pending').length;
@@ -249,11 +249,11 @@ const AdminDashboard = () => {
                     {bookings.slice(0, 5).map(booking => (
                       <tr key={booking.id}>
                         <td><code>{booking.id}</code></td>
-                        <td>{booking.guestName}</td>
-                        <td>{booking.roomName}</td>
-                        <td>{booking.checkIn}</td>
+                        <td>{booking.guestName || booking.customerName || booking.customer_name || 'N/A'}</td>
+                        <td>{booking.roomName || (booking.bookingData || {}).roomName || 'Room'}</td>
+                        <td>{booking.checkIn || '-'}</td>
                         <td><span className={`status-badge ${booking.status}`}>{booking.status}</span></td>
-                        <td>KES {booking.totalPrice.toLocaleString()}</td>
+                        <td>KES {(Number(booking.totalPrice || booking.total || 0)).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -542,11 +542,11 @@ const AdminDashboard = () => {
                   {bookings.map(booking => (
                     <tr key={booking.id}>
                       <td><code>{booking.id}</code></td>
-                      <td>{booking.guestName}</td>
-                      <td>{booking.roomName}</td>
-                      <td>{booking.checkIn}</td>
-                      <td>{booking.checkOut}</td>
-                      <td>KES {booking.totalPrice.toLocaleString()}</td>
+                      <td>{booking.guestName || booking.customerName || booking.customer_name || 'N/A'}</td>
+                      <td>{booking.roomName || (booking.bookingData || {}).roomName || 'Room'}</td>
+                      <td>{booking.checkIn || '-'}</td>
+                      <td>{booking.checkOut || '-'}</td>
+                      <td>KES {(Number(booking.totalPrice || booking.total || 0)).toLocaleString()}</td>
                       <td><span className={`status-badge ${booking.status}`}>{booking.status}</span></td>
                       <td><span className={`payment-badge ${booking.paymentStatus}`}>{booking.paymentStatus}</span></td>
                       <td>

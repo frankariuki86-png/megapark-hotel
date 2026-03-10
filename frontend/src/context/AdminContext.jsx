@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, fetchBookings, /* new */ loginAdmin, logoutAdmin, fetchHalls, createHall, updateHallApi, deleteHallApi, fetchRooms, createRoom, updateRoomApi, deleteRoomApi } from '../api/mockApi';
+import { fetchMenuItems, saveMenuItems, createMenuItem, updateMenuItemApi, deleteMenuItemApi, fetchOrders, updateOrderApi, saveOrders, fetchBookings, updateBookingApi, /* new */ loginAdmin, logoutAdmin, fetchHalls, createHall, updateHallApi, deleteHallApi, fetchRooms, createRoom, updateRoomApi, deleteRoomApi } from '../api/mockApi';
 
 const AdminContext = createContext();
 
@@ -56,24 +56,25 @@ export const AdminProvider = ({ children }) => {
           if (remoteBookings && remoteBookings.length) {
             const normalized = remoteBookings.map(b => {
               // booking data may be nested under booking_data or bookingData
-              const bd = b.booking_data || b.bookingData || {};
-              const roomId = bd.roomId || bd.room_id || b.room_id || b.roomId || '';
+              const bd = b.bookingData || b.booking_data || {};
+              const parsedBd = typeof bd === 'string' ? (() => { try { return JSON.parse(bd); } catch { return {}; } })() : bd;
+              const roomId = parsedBd.roomId || parsedBd.room_id || b.room_id || b.roomId || '';
               const room = rooms.find(r => r.id === roomId) || {};
               return {
                 id: b.id,
                 roomId: roomId,
-                roomName: b.roomName || room.name || bd.roomName || bd.room || '',
-                guestName: b.guestName || b.customer_name || b.customerName || '',
-                email: b.email || b.customer_email || b.customerEmail || '',
-                phone: b.phone || b.customer_phone || b.customerPhone || '',
-                checkIn: bd.checkIn || bd.check_in || b.check_in || b.checkIn || '',
-                checkOut: bd.checkOut || bd.check_out || b.check_out || b.checkOut || '',
-                nights: bd.nights || b.nights || 0,
-                guests: bd.guests || bd.guestCount || b.guests || 0,
-                totalPrice: b.total || b.total_price || b.totalPrice || 0,
+                roomName: b.roomName || room.name || parsedBd.roomName || parsedBd.room || '',
+                guestName: b.guestName || b.customerName || b.customer_name || '',
+                email: b.email || b.customerEmail || b.customer_email || '',
+                phone: b.phone || b.customerPhone || b.customer_phone || '',
+                checkIn: b.checkIn || parsedBd.checkIn || parsedBd.check_in || b.check_in || '',
+                checkOut: b.checkOut || parsedBd.checkOut || parsedBd.check_out || b.check_out || '',
+                nights: parsedBd.nights || b.nights || 0,
+                guests: parsedBd.guests || parsedBd.guestCount || b.guests || 0,
+                totalPrice: b.totalPrice || b.total || b.total_price || 0,
                 status: b.status || '',
-                paymentStatus: b.payment_status || b.paymentStatus || '' ,
-                createdAt: b.created_at || b.createdAt || ''
+                paymentStatus: b.paymentStatus || b.payment_status || '',
+                createdAt: b.createdAt || b.created_at || ''
               };
             });
             setBookings(normalized);
@@ -275,25 +276,30 @@ export const AdminProvider = ({ children }) => {
         console.log('[AdminContext] Bookings fetch result:', remoteBookings);
         if (mounted && remoteBookings && remoteBookings.length > 0) {
           console.log('[AdminContext] Normalizing and setting bookings from remote:', remoteBookings.length);
-          const normalized = remoteBookings.map(b => {
-            const room = rooms.find(r => r.id === (b.room_id || b.roomId));
+          const normalizeBooking = (b) => {
+            // backend /api/bookings already returns normalizeDbBooking (camelCase flattened)
+            const bd = b.bookingData || b.booking_data || {};
+            const parsedBd = typeof bd === 'string' ? (() => { try { return JSON.parse(bd); } catch { return {}; } })() : bd;
+            const room = rooms.find(r => r.id === (parsedBd.roomId || b.roomId || b.room_id || ''));
             return {
               id: b.id,
-              roomId: b.room_id || b.roomId || '',
-              roomName: b.roomName || (room ? room.name : ''),
-              guestName: b.guestName || b.guest_name || '',
-              email: b.email || '',
-              phone: b.phone || '',
-              checkIn: b.check_in || b.checkIn || '',
-              checkOut: b.check_out || b.checkOut || '',
-              nights: b.nights || 0,
-              guests: b.guests || 0,
-              totalPrice: b.total_price || b.totalPrice || 0,
+              roomId: parsedBd.roomId || b.roomId || b.room_id || '',
+              roomName: b.roomName || parsedBd.roomName || (room ? room.name : '') || '',
+              guestName: b.guestName || b.customerName || b.customer_name || '',
+              email: b.email || b.customerEmail || b.customer_email || '',
+              phone: b.phone || b.customerPhone || b.customer_phone || '',
+              checkIn: b.checkIn || parsedBd.checkIn || b.check_in || '',
+              checkOut: b.checkOut || parsedBd.checkOut || b.check_out || '',
+              nights: b.nights || parsedBd.nights || 0,
+              guests: b.guests || parsedBd.guests || 0,
+              totalPrice: b.totalPrice || b.total || b.total_price || 0,
               status: b.status || '',
-              paymentStatus: b.payment_status || b.paymentStatus || '',
-              createdAt: b.created_at || b.createdAt || ''
+              paymentStatus: b.paymentStatus || b.payment_status || '',
+              bookingType: b.bookingType || b.booking_type || 'room',
+              createdAt: b.createdAt || b.created_at || ''
             };
-          });
+          };
+          const normalized = remoteBookings.map(normalizeBooking);
           setBookings(normalized);
         } else {
           console.log('[AdminContext] Remote bookings empty - leaving local list as-is');

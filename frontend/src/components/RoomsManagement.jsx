@@ -20,6 +20,7 @@ const RoomsManagement = () => {
     availability: true
   });
   const [imageFiles, setImageFiles] = useState([]);
+  const [success, setSuccess] = useState(null);
 
   useEffect(() => {
     fetchRooms();
@@ -58,9 +59,15 @@ const RoomsManagement = () => {
 
   const handleEdit = (room) => {
     setFormData({
-      ...room,
+      name: room.name || '',
+      type: room.type || 'standard',
+      description: room.description || '',
+      roomNumber: room.roomNumber || room.room_number || '',
       pricePerNight: Number(room.pricePerNight) || 0,
-      capacity: Number(room.capacity) || 1
+      capacity: Number(room.capacity) || 1,
+      amenities: Array.isArray(room.amenities) ? room.amenities : [],
+      images: Array.isArray(room.images) ? room.images : [],
+      availability: room.availability !== undefined ? room.availability : true
     });
     setImageFiles([]);
     setEditingId(room.id);
@@ -69,6 +76,17 @@ const RoomsManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const payload = {
+      name: formData.name,
+      type: formData.type || 'standard',
+      description: formData.description || '',
+      roomNumber: formData.roomNumber,
+      pricePerNight: Number(formData.pricePerNight) || 0,
+      capacity: Number(formData.capacity) || 1,
+      amenities: Array.isArray(formData.amenities) ? formData.amenities : [],
+      images: Array.isArray(formData.images) ? formData.images : [],
+      availability: formData.availability !== undefined ? formData.availability : true
+    };
     
     // Validate required fields on frontend first
     if (!formData.name || !formData.name.trim()) {
@@ -95,11 +113,13 @@ const RoomsManagement = () => {
     try {
       setError(null);
       if (editingId) {
-        console.log('[RoomsManagement] Updating room:', editingId, 'with data:', formData, 'and files:', imageFiles.length);
-        await roomsService.update(editingId, formData, imageFiles);
+        console.log('[RoomsManagement] Updating room:', editingId, 'with data:', payload, 'and files:', imageFiles.length);
+        await roomsService.update(editingId, payload, imageFiles);
+        setSuccess('Room updated successfully!');
       } else {
-        console.log('[RoomsManagement] Creating room with data:', formData, 'and files:', imageFiles.length);
-        await roomsService.create(formData, imageFiles);
+        console.log('[RoomsManagement] Creating room with data:', payload, 'and files:', imageFiles.length);
+        await roomsService.create(payload, imageFiles);
+        setSuccess('Room created successfully!');
       }
       await fetchRooms();
       setShowForm(false);
@@ -132,6 +152,7 @@ const RoomsManagement = () => {
       </div>
 
       {error && <div className="error-message">❌ {error}</div>}
+      {success && <div className="success-message" style={{background:'#e8f5e9',color:'#2e7d32',padding:'10px 16px',borderRadius:'6px',marginBottom:'12px'}}>✅ {success}</div>}
 
       {showForm && (
         <form className="admin-form" onSubmit={handleSubmit}>

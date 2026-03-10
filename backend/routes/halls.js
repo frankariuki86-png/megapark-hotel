@@ -5,6 +5,35 @@ const { HallCreateSchema, HallUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   logger.info('[hallsRouter] Exported function called');
+
+  const parseJsonArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const normalizeDbHall = (hall) => {
+    if (!hall) return hall;
+    return {
+      id: hall.id,
+      name: hall.name,
+      description: hall.description || '',
+      capacity: hall.capacity !== undefined ? Number(hall.capacity) : 100,
+      pricePerDay: hall.price_per_day !== undefined
+        ? Number(hall.price_per_day)
+        : (hall.pricePerDay !== undefined ? Number(hall.pricePerDay) : (hall.price !== undefined ? Number(hall.price) : 0)),
+      images: parseJsonArray(hall.images),
+      amenities: parseJsonArray(hall.amenities),
+      availability: hall.availability !== undefined ? hall.availability : true,
+      createdAt: hall.created_at || hall.createdAt || '',
+      updatedAt: hall.updated_at || hall.updatedAt || ''
+    };
+  };
   
   // Test endpoint to verify router is mounted
   router.get('/test', (req, res) => {
@@ -34,7 +63,12 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
             }
           }
 
-          return res.json(rows);
+          const normalized = rows.map(r => {
+            const base = normalizeDbHall(r);
+            const extra = jsonHalls.find(h => h.id === r.id);
+            return extra ? { ...base, ...extra } : base;
+          });
+          return res.json(normalized);
         } catch (dbErr) {
           logger.warn('GET /api/halls - DB query failed, falling back to JSON:', dbErr.message);
         }
@@ -51,7 +85,30 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   // POST - Create hall (protected)
   router.post('/', authenticate, async (req, res) => {
     try {
-      const payload = HallCreateSchema.parse(req.body);
+      const body = { ...req.body };
+      if (body.capacity !== undefined) body.capacity = parseInt(body.capacity, 10);
+      if (body.pricePerDay !== undefined) body.pricePerDay = parseFloat(body.pricePerDay);
+      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
+      if (body.amenities && typeof body.amenities === 'string') {
+        try {
+          body.amenities = JSON.parse(body.amenities);
+        } catch (e) {
+          body.amenities = [];
+        }
+      }
+      if (body.images && typeof body.images === 'string') {
+        try {
+          body.images = JSON.parse(body.images);
+        } catch (e) {
+          body.images = [];
+        }
+      }
+      if (body.price !== undefined && body.pricePerDay === undefined) {
+        body.pricePerDay = parseFloat(body.price);
+        delete body.price;
+      }
+
+      const payload = HallCreateSchema.parse(body);
       const id = `hall-${Date.now()}`;
       
       let useDB = false;
@@ -89,7 +146,16 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
             const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
             const { rows } = await pgClient.query(q, values);
             if (rows && rows[0]) {
-              return res.status(201).json(rows[0]);
+              const normalized = normalizeDbHall(rows[0]);
+              try {
+                const hallsFile = readJSON(hallsPath, []);
+                const createdPayload = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
+                hallsFile.unshift(createdPayload);
+                writeJSON(hallsPath, hallsFile);
+              } catch (e) {
+                logger.warn('POST /api/halls - failed to update JSON fallback', e.message);
+              }
+              return res.status(201).json({ ...normalized, ...payload });
             }
           }
         } catch (dbErr) {
@@ -117,7 +183,30 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   router.put('/:id', authenticate, async (req, res) => {
     try {
       const id = req.params.id;
-      const payload = HallUpdateSchema.parse(req.body);
+      const body = { ...req.body };
+      if (body.capacity !== undefined) body.capacity = parseInt(body.capacity, 10);
+      if (body.pricePerDay !== undefined) body.pricePerDay = parseFloat(body.pricePerDay);
+      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
+      if (body.amenities && typeof body.amenities === 'string') {
+        try {
+          body.amenities = JSON.parse(body.amenities);
+        } catch (e) {
+          body.amenities = [];
+        }
+      }
+      if (body.images && typeof body.images === 'string') {
+        try {
+          body.images = JSON.parse(body.images);
+        } catch (e) {
+          body.images = [];
+        }
+      }
+      if (body.price !== undefined && body.pricePerDay === undefined) {
+        body.pricePerDay = parseFloat(body.price);
+        delete body.price;
+      }
+
+      const payload = HallUpdateSchema.parse(body);
       
       let useDB = false;
       if (pgClient) {
@@ -157,7 +246,21 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
               values.push(id);
               const { rows } = await pgClient.query(q, values);
               if (rows && rows[0]) {
-                return res.json(rows[0]);
+                const hall = normalizeDbHall(rows[0]);
+                try {
+                  const hallsFile = readJSON(hallsPath, []);
+                  const existingIndex = hallsFile.findIndex(h => h.id === id);
+                  const updatedPayload = { id, ...payload, updatedAt: new Date().toISOString() };
+                  if (existingIndex >= 0) {
+                    hallsFile[existingIndex] = { ...hallsFile[existingIndex], ...updatedPayload };
+                  } else {
+                    hallsFile.unshift(updatedPayload);
+                  }
+                  writeJSON(hallsPath, hallsFile);
+                } catch (e) {
+                  logger.warn('PUT /api/halls - failed to update JSON fallback', e.message);
+                }
+                return res.json({ ...hall, ...payload });
               } else if (rows && rows.length === 0) {
                 // Hall not found in DB, fall back to JSON
                 useDB = false;
