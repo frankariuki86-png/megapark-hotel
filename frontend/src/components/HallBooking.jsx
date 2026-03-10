@@ -7,22 +7,17 @@ import '../styles/hallbooking.css';
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
-const getApiOrigin = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) {
-    const clean = envUrl.replace(/\/$/, '');
-    return clean.endsWith('/api') ? clean.slice(0, -4) : clean;
-  }
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return window.location.origin;
-  }
-  return 'http://localhost:3000';
-};
-
 const resolveMediaUrl = (url) => {
   if (!url || typeof url !== 'string') return '';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
-  if (url.startsWith('/uploads')) return `${getApiOrigin()}${url}`;
+  if (url.startsWith('/uploads')) {
+    const apiBase = getApiBaseUrl();
+    return `${apiBase}${url}`;
+  }
+  if (url.startsWith('uploads/')) {
+    const apiBase = getApiBaseUrl();
+    return `${apiBase}/${url}`;
+  }
   return url;
 };
 

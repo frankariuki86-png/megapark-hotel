@@ -52,6 +52,12 @@ app.use('/uploads', express.static(uploadsDir, {
   etag: false
 }));
 
+// Also expose uploads behind /api for environments that proxy only /api/*
+app.use('/api/uploads', express.static(uploadsDir, {
+  maxAge: '7d',
+  etag: false
+}));
+
 logger.info('Uploads directory configured at:', uploadsDir);
 
 // Swagger API Documentation
