@@ -47,16 +47,21 @@ app.use(express.json({ limit: '10mb' }));
 // Serve uploaded images and files as static assets
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-app.use('/uploads', express.static(uploadsDir, {
+
+// setHeaders adds Cross-Origin-Resource-Policy so browsers on a different
+// origin (e.g. GitHub Pages / Render frontend) can display the images
+const uploadsStaticOptions = {
   maxAge: '7d',
-  etag: false
-}));
+  etag: false,
+  setHeaders: (res) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+};
+app.use('/uploads', express.static(uploadsDir, uploadsStaticOptions));
 
 // Also expose uploads behind /api for environments that proxy only /api/*
-app.use('/api/uploads', express.static(uploadsDir, {
-  maxAge: '7d',
-  etag: false
-}));
+app.use('/api/uploads', express.static(uploadsDir, uploadsStaticOptions));
 
 logger.info('Uploads directory configured at:', uploadsDir);
 
