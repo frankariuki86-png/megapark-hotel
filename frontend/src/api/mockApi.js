@@ -99,7 +99,41 @@ const call = async (method, path, body = null, skipAuth = false, retryCount = 0)
           }, delay);
           return;
         }
-        
+
+        // on TOKEN_EXPIRED 401: attempt silent refresh once, then retry original request
+        if (res.status === 401 && json.code === 'TOKEN_EXPIRED' && !skipAuth && retryCount === 0) {
+          const refreshTok = getRefreshToken();
+          if (refreshTok) {
+            try {
+              const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken: refreshTok })
+              });
+              if (refreshRes.ok) {
+                const refreshData = await refreshRes.json().catch(() => ({}));
+                if (refreshData.accessToken) {
+                  setTokens(refreshData.accessToken, refreshData.refreshToken || null);
+                  console.log('[API] Token refreshed silently, retrying:', method, path);
+                  call(method, path, body, skipAuth, retryCount + 1).then(resolve).catch(reject);
+                  return;
+                }
+              }
+            } catch (refreshErr) {
+              console.warn('[API] Silent token refresh failed:', refreshErr.message);
+            }
+          }
+          // Could not refresh — clear all session data and notify the app
+          setTokens(null, null);
+          try { localStorage.removeItem('adminToken'); } catch {}
+          try { localStorage.removeItem('accessToken'); } catch {}
+          try { localStorage.removeItem('adminUser'); } catch {}
+          console.warn('[API] Session expired — clearing tokens and notifying app');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:session-expired'));
+          }
+        }
+
         if (!res.ok) return reject(new Error(json.error || `HTTP ${res.status}`));
         resolve(json);
       })

@@ -17,6 +17,17 @@ export const AdminProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Clear admin session when the API signals token refresh has failed completely
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      console.warn('[AdminContext] Session expired — clearing admin user');
+      setAdminUser(null);
+      localStorage.removeItem('adminUser');
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, []);
+
   const [rooms, setRooms] = useState([]);
 
   // Helper to normalize room data from DB (snake_case) to UI (camelCase)

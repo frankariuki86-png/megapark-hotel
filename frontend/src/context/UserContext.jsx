@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 // Determine API base URL: prefer VITE_API_URL when provided, otherwise use relative `/api` in production and localhost in dev
 const getApiBaseUrl = () => {
@@ -126,6 +126,16 @@ export const UserProvider = ({ children }) => {
     setAccessToken(null);
     localStorage.removeItem('accessToken');
   }, []);
+
+  // Auto-logout when the API signals the session has expired (e.g. refresh token also expired)
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      console.warn('[UserContext] Session expired — logging out');
+      logout();
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, [logout]);
 
   const addAddress = useCallback((address) => {
     const newAddress = {
