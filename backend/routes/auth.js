@@ -24,10 +24,16 @@ module.exports = ({ logger, pgClient }) => {
       try {
         // Wrap query in timeout to prevent hanging on bad connections
         const queryPromise = pgClient.query('SELECT id, email, password_hash AS "passwordHash", name, role FROM users WHERE email = $1 LIMIT 1', [lowerEmail]);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout')), 3000)
-        );
-        const res = await Promise.race([queryPromise, timeoutPromise]);
+        let timeoutHandle;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error('Database query timeout')), 3000);
+        });
+        let res;
+        try {
+          res = await Promise.race([queryPromise, timeoutPromise]);
+        } finally {
+          clearTimeout(timeoutHandle);
+        }
         if (res.rows.length > 0) {
           return res.rows[0];
         }

@@ -89,13 +89,18 @@ let pgClient = null;
       clientOptions.commandTimeout = 5000; // 5 second timeout
       pgClient = new Client(clientOptions);
       
-      // Set a connection timeout
+      // Set a connection timeout without leaving a dangling rejecting promise
       const connectPromise = pgClient.connect();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Postgres connection timeout')), 10000)
-      );
-      
-      await Promise.race([connectPromise, timeoutPromise]);
+      let timeoutHandle;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error('Postgres connection timeout')), 10000);
+      });
+
+      try {
+        await Promise.race([connectPromise, timeoutPromise]);
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
       logger.info('Connected to Postgres');
     } catch (e) {
       logger.warn(`Postgres connection failed: ${e.message}`);
