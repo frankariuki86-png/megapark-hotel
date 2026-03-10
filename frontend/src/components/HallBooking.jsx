@@ -7,6 +7,25 @@ import '../styles/hallbooking.css';
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
+const getApiOrigin = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    const clean = envUrl.replace(/\/$/, '');
+    return clean.endsWith('/api') ? clean.slice(0, -4) : clean;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return window.location.origin;
+  }
+  return 'http://localhost:3000';
+};
+
+const resolveMediaUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  if (url.startsWith('/uploads')) return `${getApiOrigin()}${url}`;
+  return url;
+};
+
 const HallBooking = () => {
   const { addBooking } = useCart();
   const navigate = useNavigate();
@@ -99,16 +118,16 @@ const HallBooking = () => {
             ...hall,
             capacity: hall.capacity || 100,
             area: hall.area || '200 sq meters',
-            basePrice: hall.basePrice || hall.price || 15000,
-            image: hall.image || getImagePath('mega-park4.jfif'),
+            basePrice: hall.basePrice || hall.pricePerDay || hall.price || 15000,
+            image: resolveMediaUrl(hall.image) || (Array.isArray(hall.images) && hall.images.length > 0 ? resolveMediaUrl(hall.images[0]) : getImagePath('mega-park4.jfif')),
             packages: Array.isArray(hall.packages) && hall.packages.length > 0 ? hall.packages.map(pkg => ({
               ...pkg,
               price: parseInt(pkg.price) || parseInt(pkg.basePrice) || 15000,
               includes: Array.isArray(pkg.includes) ? pkg.includes : ['Venue Rental', 'Tables & Chairs']
             })) : [
-              { id: 'pkg-basic', name: 'Basic', price: parseInt(hall.basePrice) || parseInt(hall.price) || 15000, includes: ['Venue Rental', 'Tables & Chairs', 'Basic Setup'] },
-              { id: 'pkg-standard', name: 'Standard', price: (parseInt(hall.basePrice) || parseInt(hall.price) || 15000) * 1.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full Setup', 'Sound System'] },
-              { id: 'pkg-premium', name: 'Premium', price: (parseInt(hall.basePrice) || parseInt(hall.price) || 15000) * 2.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full AV Setup', 'Sound System', 'Event Coordinator'] }
+              { id: 'pkg-basic', name: 'Basic', price: parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000, includes: ['Venue Rental', 'Tables & Chairs', 'Basic Setup'] },
+              { id: 'pkg-standard', name: 'Standard', price: (parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000) * 1.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full Setup', 'Sound System'] },
+              { id: 'pkg-premium', name: 'Premium', price: (parseInt(hall.basePrice || hall.pricePerDay || hall.price) || 15000) * 2.5, includes: ['Venue Rental', 'Tables & Chairs', 'Full AV Setup', 'Sound System', 'Event Coordinator'] }
             ]
           })));
         } else {

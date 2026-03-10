@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authenticate');
+const { uploadAndOptimizeMultipleImages } = require('../middleware/fileUpload');
 const { HallCreateSchema, HallUpdateSchema } = require('../validators/schemas');
 
 module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
@@ -83,7 +84,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   });
 
   // POST - Create hall (protected)
-  router.post('/', authenticate, async (req, res) => {
+  router.post('/', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
     try {
       const body = { ...req.body };
       if (body.capacity !== undefined) body.capacity = parseInt(body.capacity, 10);
@@ -106,6 +107,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       if (body.price !== undefined && body.pricePerDay === undefined) {
         body.pricePerDay = parseFloat(body.price);
         delete body.price;
+      }
+
+      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
+        body.images = req.optimizedFiles.map(f => f.optimizedUrl);
       }
 
       const payload = HallCreateSchema.parse(body);
@@ -180,7 +185,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   });
 
   // PUT - Update hall (protected)
-  router.put('/:id', authenticate, async (req, res) => {
+  router.put('/:id', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
     try {
       const id = req.params.id;
       const body = { ...req.body };
@@ -204,6 +209,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
       if (body.price !== undefined && body.pricePerDay === undefined) {
         body.pricePerDay = parseFloat(body.price);
         delete body.price;
+      }
+
+      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
+        body.images = req.optimizedFiles.map(f => f.optimizedUrl);
       }
 
       const payload = HallUpdateSchema.parse(body);

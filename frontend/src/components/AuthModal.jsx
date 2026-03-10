@@ -14,6 +14,7 @@ const AuthModal = ({ isOpen, onClose }) => {
     phone: ''
   });
   const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Initialize Google Sign-In button when modal opens
   useEffect(() => {
@@ -52,6 +53,12 @@ const AuthModal = ({ isOpen, onClose }) => {
         const res = await googleLogin(response.credential);
         if (!res.ok) {
           setErrors({ form: res.error });
+        } else {
+          setSuccessMessage('Login successful!');
+          setTimeout(() => {
+            setSuccessMessage('');
+            onClose();
+          }, 800);
         }
       }
     } catch (err) {
@@ -111,6 +118,11 @@ const AuthModal = ({ isOpen, onClose }) => {
             return;
           }
         }
+        setSuccessMessage(isLoginMode ? 'Login successful!' : 'Account created successfully!');
+        setTimeout(() => {
+          setSuccessMessage('');
+          onClose();
+        }, 800);
         setFormData({
           email: '',
           password: '',
@@ -138,6 +150,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           <h2>{isLoginMode ? 'Login' : 'Create Account'}</h2>
 
           <form onSubmit={handleSubmit} className="auth-form">
+            {successMessage && <div className="success-message" style={{marginBottom:12, background:'#e8f5e9', color:'#2e7d32', padding:'10px 12px', borderRadius:'6px'}}>{successMessage}</div>}
             {errors.form && <div className="error-message" style={{marginBottom:12}}>{errors.form}</div>}
             <div className="form-group">
               <label>Email Address</label>

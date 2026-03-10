@@ -8,6 +8,7 @@ const RoomsManagement = () => {
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [amenitiesInput, setAmenitiesInput] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     type: 'standard',
@@ -52,6 +53,7 @@ const RoomsManagement = () => {
       availability: true
     });
     setImageFiles([]);
+    setAmenitiesInput('');
     setEditingId(null);
     setError(null);
     setShowForm(true);
@@ -70,12 +72,18 @@ const RoomsManagement = () => {
       availability: room.availability !== undefined ? room.availability : true
     });
     setImageFiles([]);
+    setAmenitiesInput(Array.isArray(room.amenities) ? room.amenities.join(', ') : '');
     setEditingId(room.id);
     setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const parsedAmenities = amenitiesInput
+      .split(',')
+      .map(a => a.trim())
+      .filter(a => a.length > 0);
+
     const payload = {
       name: formData.name,
       type: formData.type || 'standard',
@@ -83,7 +91,7 @@ const RoomsManagement = () => {
       roomNumber: formData.roomNumber,
       pricePerNight: Number(formData.pricePerNight) || 0,
       capacity: Number(formData.capacity) || 1,
-      amenities: Array.isArray(formData.amenities) ? formData.amenities : [],
+      amenities: parsedAmenities,
       images: Array.isArray(formData.images) ? formData.images : [],
       availability: formData.availability !== undefined ? formData.availability : true
     };
@@ -201,6 +209,25 @@ const RoomsManagement = () => {
               onChange={(e) => setFormData({...formData, description: e.target.value})}
               rows="3"
             />
+          </div>
+
+          <div className="form-group">
+            <label>Amenities (comma-separated)</label>
+            <input
+              type="text"
+              value={amenitiesInput}
+              onChange={(e) => setAmenitiesInput(e.target.value)}
+              placeholder="e.g. Free WiFi, Air Conditioning, Smart TV"
+            />
+            {amenitiesInput && (
+              <div style={{marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
+                {amenitiesInput.split(',').map(a => a.trim()).filter(a => a).map((a, i) => (
+                  <span key={i} style={{background:'#e3f2fd',color:'#1565c0',padding:'2px 10px',borderRadius:'12px',fontSize:'12px'}}>
+                    {a}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="form-row">

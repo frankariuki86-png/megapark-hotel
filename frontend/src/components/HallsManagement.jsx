@@ -98,11 +98,11 @@ const HallsManagement = () => {
       setSuccess(null);
       if (editingId) {
         console.log('[HallsManagement] Updating hall:', editingId, 'with data:', payload);
-        await hallsService.update(editingId, payload);
+        await hallsService.update(editingId, payload, imageFiles);
         setSuccess('Hall updated successfully!');
       } else {
         console.log('[HallsManagement] Creating hall with data:', payload);
-        await hallsService.create(payload);
+        await hallsService.create(payload, imageFiles);
         setSuccess('Hall created successfully!');
       }
       await fetchHalls();

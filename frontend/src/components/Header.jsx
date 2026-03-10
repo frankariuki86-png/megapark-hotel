@@ -13,9 +13,8 @@ const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
 const Header = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { getCartCount } = useCart();
-  const { user, logout } = useUser();
+  const { user, logout, isAuthModalOpen, setIsAuthModalOpen } = useUser();
   const [profileOpen, setProfileOpen] = useState(false);
   const { isDark, toggleTheme } = useTheme();
   const { language, changeLanguage, availableLanguages } = useLanguage();

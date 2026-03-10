@@ -283,7 +283,7 @@ export const hallsService = {
     return data;
   },
 
-  async create(hall) {
+  async create(hall, imageFiles = []) {
     const payload = { ...hall };
     if (payload.price !== undefined && payload.pricePerDay === undefined) {
       payload.pricePerDay = parseFloat(payload.price);
@@ -293,11 +293,38 @@ export const hallsService = {
 
     const url = `${API_BASE_URL}/halls`;
     console.log('[hallsService.create] Creating at:', url, 'data:', payload);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload)
-    });
+    let res;
+    if (imageFiles && imageFiles.length > 0) {
+      const formData = new FormData();
+      formData.append('name', payload.name || '');
+      formData.append('description', payload.description || '');
+      formData.append('capacity', payload.capacity ?? 0);
+      formData.append('pricePerDay', payload.pricePerDay ?? 0);
+      formData.append('availability', payload.availability !== undefined ? payload.availability : true);
+      if (payload.amenities && Array.isArray(payload.amenities)) {
+        formData.append('amenities', JSON.stringify(payload.amenities));
+      }
+      if (payload.images && Array.isArray(payload.images) && payload.images.length > 0) {
+        formData.append('images', JSON.stringify(payload.images));
+      }
+      for (const file of imageFiles.slice(0, 5)) {
+        formData.append('images', file);
+      }
+      const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+    } else {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+    }
     console.log('[hallsService.create] Response status:', res.status);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
@@ -309,7 +336,7 @@ export const hallsService = {
     return data;
   },
 
-  async update(id, hall) {
+  async update(id, hall, imageFiles = []) {
     const payload = { ...hall };
     if (payload.price !== undefined && payload.pricePerDay === undefined) {
       payload.pricePerDay = parseFloat(payload.price);
@@ -319,11 +346,38 @@ export const hallsService = {
 
     const url = `${API_BASE_URL}/halls/${id}`;
     console.log('[hallsService.update] Updating at:', url, 'data:', payload);
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload)
-    });
+    let res;
+    if (imageFiles && imageFiles.length > 0) {
+      const formData = new FormData();
+      if (payload.name !== undefined) formData.append('name', payload.name);
+      if (payload.description !== undefined) formData.append('description', payload.description);
+      if (payload.capacity !== undefined) formData.append('capacity', payload.capacity);
+      if (payload.pricePerDay !== undefined) formData.append('pricePerDay', payload.pricePerDay);
+      if (payload.availability !== undefined) formData.append('availability', payload.availability);
+      if (payload.amenities && Array.isArray(payload.amenities)) {
+        formData.append('amenities', JSON.stringify(payload.amenities));
+      }
+      if (payload.images && Array.isArray(payload.images) && payload.images.length > 0) {
+        formData.append('images', JSON.stringify(payload.images));
+      }
+      for (const file of imageFiles.slice(0, 5)) {
+        formData.append('images', file);
+      }
+      const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      res = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: formData
+      });
+    } else {
+      res = await fetch(url, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+    }
     console.log('[hallsService.update] Response status:', res.status);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));

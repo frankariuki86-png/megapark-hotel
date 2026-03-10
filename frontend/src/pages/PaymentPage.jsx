@@ -107,9 +107,9 @@ const PaymentPage = () => {
   };
 
   return (
-    <div style={{ minHeight: '60vh' }} className="page-fade">
+    <div style={{ minHeight: '60vh', padding: '24px 16px' }} className="page-fade">
       <h2 style={{ padding: 16 }}>Secure Payment</h2>
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 16, maxWidth: 700, margin: '0 auto' }}>
         <div style={{ marginBottom: 12 }}>
           <strong>Item:</strong> {booking.name}
         </div>
@@ -117,7 +117,16 @@ const PaymentPage = () => {
           <strong>Amount:</strong> KES {(booking.price || 0).toLocaleString()}
         </div>
       </div>
-      <PaymentGateway isOpen={isOpen} total={booking.price || 0} onClose={() => setIsOpen(false)} onPaymentSuccess={handlePaymentSuccess} isDisabled={isSubmitting} />
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+        <PaymentGateway
+          isOpen={isOpen}
+          total={booking.price || 0}
+          onClose={() => setIsOpen(false)}
+          onPaymentSuccess={handlePaymentSuccess}
+          isDisabled={isSubmitting}
+          inline
+        />
+      </div>
     </div>
   );
 };

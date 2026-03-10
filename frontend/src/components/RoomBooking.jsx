@@ -10,6 +10,25 @@ import '../styles/roombooking.css';
 const BASE_URL = import.meta.env.BASE_URL || '/megapark-hotel/';
 const getImagePath = (imageName) => `${BASE_URL}images/${imageName}`;
 
+const getApiOrigin = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    const clean = envUrl.replace(/\/$/, '');
+    return clean.endsWith('/api') ? clean.slice(0, -4) : clean;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return window.location.origin;
+  }
+  return 'http://localhost:3000';
+};
+
+const resolveMediaUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  if (url.startsWith('/uploads')) return `${getApiOrigin()}${url}`;
+  return url;
+};
+
 const RoomBooking = () => {
   const navigate = useNavigate();
   const { user, setIsAuthModalOpen } = useUser();
@@ -90,8 +109,10 @@ const RoomBooking = () => {
             ...room,
             price: parseInt(room.price || room.pricePerNight) || 5000,
             capacity: parseInt(room.capacity) || 2,
-            image: room.image || getImagePath('home1.jfif'),
-            images: Array.isArray(room.images) ? room.images : (room.image ? [room.image] : [getImagePath('home1.jfif')]),
+            image: resolveMediaUrl(room.image) || (Array.isArray(room.images) && room.images.length > 0 ? resolveMediaUrl(room.images[0]) : getImagePath('home1.jfif')),
+            images: Array.isArray(room.images)
+              ? room.images.map(resolveMediaUrl).filter(Boolean)
+              : (room.image ? [resolveMediaUrl(room.image)] : [getImagePath('home1.jfif')]),
             amenities: Array.isArray(room.amenities) && room.amenities.length > 0 ? room.amenities : ['Free WiFi', 'Air Conditioning', 'En-suite Bathroom'],
             description: room.description || 'Premium accommodation at Megapark Resort'
           })));

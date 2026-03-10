@@ -16,7 +16,7 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 console.log('[PaymentGateway] API_BASE_URL:', API_BASE_URL);
 
-const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess }) => {
+const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess, inline = false, isDisabled = false }) => {
   const [selectedMethod, setSelectedMethod] = useState('mpesa');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
@@ -72,8 +72,11 @@ const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess }) => {
 
   if (!isOpen) return null;
 
+  const wrapperClass = inline ? 'payment-gateway-inline' : 'payment-gateway-overlay';
+  const handleWrapperClick = inline ? undefined : handleClose;
+
   return (
-    <div className="payment-gateway-overlay" onClick={handleClose}>
+    <div className={wrapperClass} onClick={handleWrapperClick}>
       <div className="payment-gateway" onClick={(e) => e.stopPropagation()}>
         <button className="payment-close" onClick={handleClose}>×</button>
 
@@ -120,7 +123,7 @@ const PaymentGateway = ({ isOpen, onClose, total, onPaymentSuccess }) => {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={isProcessing}
+                  disabled={isProcessing || isDisabled}
                 >
                   {isProcessing ? 'Processing...' : 'Continue to M-Pesa'}
                 </button>
