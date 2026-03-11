@@ -101,10 +101,28 @@ let pgClient = null;
       } finally {
         clearTimeout(timeoutHandle);
       }
+
+      // Prevent process crashes when the pg client emits async socket errors
+      pgClient.on('error', async (err) => {
+        logger.error('Postgres client error event:', err?.message || err);
+        try {
+          await pgClient.end();
+        } catch (closeErr) {
+          logger.warn('Error closing pg client after error event:', closeErr?.message || closeErr);
+        }
+        // degrade gracefully to file-backed JSON mode
+        pgClient = null;
+      });
+
       logger.info('Connected to Postgres');
     } catch (e) {
       logger.warn(`Postgres connection failed: ${e.message}`);
       // Ensure pgClient is null when connection fails
+      try {
+        if (pgClient) await pgClient.end();
+      } catch (closeErr) {
+        logger.warn('Error closing pg client after failed connect:', closeErr?.message || closeErr);
+      }
       pgClient = null;
     }
   }
