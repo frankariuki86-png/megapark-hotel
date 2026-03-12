@@ -25,27 +25,32 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       }
       return value;
     }
+    if (value && typeof value === 'object') {
+      return [];
+    }
     if (typeof value !== 'string') return [];
     try {
       const parsed = JSON.parse(value);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
-      return [];
+      // Support plain single URL/data strings saved in legacy schemas
+      return value.trim() ? [value] : [];
     }
   };
 
   // Helper to normalize room data from DB (snake_case) to standard camelCase format
   const normalizeDbRoom = (room) => {
     if (!room) return room;
-    const rawRoomNumber = room.room_number ?? room.roomNumber ?? room.roomnumber ?? '';
+    const rawRoomNumber = room.room_number ?? room.roomNumber ?? room.roomnumber ?? room.room_no ?? room.roomNo ?? room.number ?? '';
     const rawPricePerNight = room.price_per_night ?? room.pricePerNight ?? room.pricepernight ?? room.price ?? 0;
-    const rawImages = room.images ?? room.gallery_images ?? room.galleryImages ?? room.galleryimages;
+    const rawImages = room.images ?? room.gallery_images ?? room.galleryImages ?? room.galleryimages ?? room.image;
     const rawAmenities = room.amenities ?? room.features;
+    const rawType = room.type ?? room.room_type ?? room.roomType ?? room.category ?? 'standard';
     return {
       id: room.id,
       roomNumber: rawRoomNumber,
       name: room.name,
-      type: room.type,
+      type: rawType,
       description: room.description || '',
       pricePerNight: rawPricePerNight,
       capacity: room.capacity || 2,
@@ -131,12 +136,11 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
 
         // dynamic mapping from payload keys to whichever column is available
         const keyMap = {};
-        keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber']);
+        keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber', 'room_no', 'roomNo', 'number']);
         keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'price', 'pricePerNight']);
-        keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages']);
+        keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages', 'image']);
         keyMap.amenities = pickFirstExisting(existingCols, ['amenities', 'features']);
-        // type column may or may not exist, but if it does we just use same name
-        if (existingCols.includes('type')) keyMap.type = 'type';
+        keyMap.type = pickFirstExisting(existingCols, ['type', 'room_type', 'roomType', 'category']);
 
         const dbCols = ['id'];
         const values = [id];
@@ -227,11 +231,11 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             };
 
             const keyMap = {};
-            keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber']);
+            keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber', 'room_no', 'roomNo', 'number']);
             keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'price', 'pricePerNight']);
-            keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages']);
+            keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages', 'image']);
             keyMap.amenities = pickFirstExisting(existingCols, ['amenities', 'features']);
-            if (existingCols.includes('type')) keyMap.type = 'type';
+            keyMap.type = pickFirstExisting(existingCols, ['type', 'room_type', 'roomType', 'category']);
 
             const updates = [];
             const values = [];
