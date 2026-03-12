@@ -103,9 +103,20 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       if (pgClient) {
         // determine which columns actually exist in the rooms table
         const { rows: colRows } = await pgClient.query(
-          `SELECT column_name FROM information_schema.columns WHERE table_name='rooms'`
+          `SELECT column_name, data_type, udt_name FROM information_schema.columns WHERE table_name='rooms'`
         );
         const existingCols = colRows.map(r => r.column_name);
+        const columnMeta = new Map(colRows.map(r => [r.column_name, r]));
+
+        const serializeForColumn = (col, value) => {
+          const meta = columnMeta.get(col);
+          if (!meta) return value;
+          // Support both schema variants: JSON/JSONB columns and PostgreSQL arrays.
+          if ((meta.data_type === 'json' || meta.data_type === 'jsonb') && (Array.isArray(value) || (value && typeof value === 'object'))) {
+            return JSON.stringify(value);
+          }
+          return value;
+        };
 
         // dynamic mapping from payload keys to whichever column is available
         const keyMap = {};
@@ -121,20 +132,16 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
 
         const dbCols = ['id'];
         const values = [id];
-        const arrayColumns = new Set(['images', 'amenities']);
 
         for (const [k, v] of Object.entries(payload)) {
           if (v === undefined) continue;
           const col = keyMap[k] || k;
           if (!existingCols.includes(col)) continue;
           dbCols.push(col);
-          values.push(v);
+          values.push(serializeForColumn(col, v));
         }
 
-        // Build placeholders with explicit type casting for array columns
-        const placeholders = dbCols.map((col, i) => {
-          return arrayColumns.has(col) ? `$${i + 1}::text[]` : `$${i + 1}`;
-        });
+        const placeholders = dbCols.map((_, i) => `$${i + 1}`);
         const q = `INSERT INTO rooms (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const { rows } = await pgClient.query(q, values);
         if (!rows || rows.length === 0) {
@@ -196,9 +203,19 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
           if (useDB) {
             // get current column list so we only update what exists
             const { rows: colRows } = await pgClient.query(
-              `SELECT column_name FROM information_schema.columns WHERE table_name='rooms'`
+              `SELECT column_name, data_type, udt_name FROM information_schema.columns WHERE table_name='rooms'`
             );
             const existingCols = colRows.map(r => r.column_name);
+            const columnMeta = new Map(colRows.map(r => [r.column_name, r]));
+
+            const serializeForColumn = (col, value) => {
+              const meta = columnMeta.get(col);
+              if (!meta) return value;
+              if ((meta.data_type === 'json' || meta.data_type === 'jsonb') && (Array.isArray(value) || (value && typeof value === 'object'))) {
+                return JSON.stringify(value);
+              }
+              return value;
+            };
 
             const keyMap = {};
             if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
@@ -212,24 +229,23 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             const updates = [];
             const values = [];
             let idx = 1;
-            const arrayColumns = new Set(['images', 'amenities']);
             for (const [k, v] of Object.entries(payload)) {
               if (v === undefined) continue;
               const col = keyMap[k] || k;
               if (!existingCols.includes(col)) continue;
-              // Add explicit type casting for array columns
-              const cast = arrayColumns.has(col) ? `::text[]` : '';
-              updates.push(`${col} = $${idx}${cast}`);
-              values.push(v);
+              updates.push(`${col} = $${idx}`);
+              values.push(serializeForColumn(col, v));
               idx++;
             }
             if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
-            const q = `UPDATE rooms SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+            const setClause = existingCols.includes('updated_at')
+              ? `${updates.join(',')}, updated_at = now()`
+              : updates.join(',');
+            const q = `UPDATE rooms SET ${setClause} WHERE id = $${idx} RETURNING *`;
             values.push(id);
             const { rows } = await pgClient.query(q, values);
             if (rows.length === 0) {
-              // not in DB, fall back to JSON below
-              useDB = false;
+              return res.status(404).json({ error: 'not_found' });
             } else {
               // normalize DB response to camelCase format
               const room = normalizeDbRoom(rows[0]);
@@ -251,8 +267,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             }
           }
         } catch (dbErr) {
-          logger.warn('PUT /api/rooms/:id DB error', dbErr.message);
-          useDB = false;
+          logger.error('PUT /api/rooms/:id DB error', dbErr.message);
+          return res.status(500).json({ error: 'server_error' });
         }
       }
       const rooms = readJSON(roomsPath, []);
