@@ -33,17 +33,43 @@ export const AdminProvider = ({ children }) => {
   // Helper to normalize room data from DB (snake_case) to UI (camelCase)
   const normalizeRoom = (room) => {
     if (!room) return room;
+    
+    // Support multiple column name variants from different DB schemas
+    const rawRoomNumber = room.room_number ?? room.roomNumber ?? room.roomnumber ?? room.room_no ?? room.roomNo ?? room.number ?? '';
+    const rawPricePerNight = room.price_per_night ?? room.pricePerNight ?? room.pricepernight ?? room.price ?? 0;
+    const rawType = room.type ?? room.room_type ?? room.roomType ?? room.category ?? 'standard';
+    
+    // Support both array and string image fields
+    let rawImages = room.images ?? room.gallery_images ?? room.galleryImages ?? room.galleryimages ?? room.image ?? [];
+    if (typeof rawImages === 'string') {
+      rawImages = rawImages.trim() ? [rawImages] : [];
+    } else if (Array.isArray(rawImages)) {
+      // Handle legacy JSON-stringified arrays
+      if (rawImages.length === 1 && typeof rawImages[0] === 'string' && rawImages[0].startsWith('[')) {
+        try {
+          const parsed = JSON.parse(rawImages[0]);
+          rawImages = Array.isArray(parsed) ? parsed : rawImages;
+        } catch {
+          // not JSON, keep as is
+        }
+      }
+    } else if (rawImages && typeof rawImages === 'object') {
+      rawImages = [];
+    }
+    
+    const rawAmenities = room.amenities ?? room.features ?? [];
+    
     return {
       id: room.id,
-      roomNumber: room.room_number || room.roomNumber || '',
+      roomNumber: rawRoomNumber,
       name: room.name,
-      type: room.type,
+      type: rawType,
       description: room.description || '',
-      pricePerNight: room.price_per_night !== undefined ? room.price_per_night : (room.pricePerNight !== undefined ? room.pricePerNight : 0),
-      capacity: room.capacity || 2,
-      amenities: room.amenities || [],
+      pricePerNight: Number(rawPricePerNight) || 0,
+      capacity: Number(room.capacity) || 2,
+      amenities: Array.isArray(rawAmenities) ? rawAmenities : [],
       availability: room.availability !== undefined ? room.availability : true,
-      images: room.images || [],
+      images: Array.isArray(rawImages) ? rawImages : [],
       createdAt: room.created_at || room.createdAt || '',
       updatedAt: room.updated_at || room.updatedAt || ''
     };
@@ -157,15 +183,38 @@ export const AdminProvider = ({ children }) => {
   // Helper to normalize hall data from DB (snake_case) to UI (camelCase)
   const normalizeHall = (hall) => {
     if (!hall) return hall;
+    
+    const rawPricePerDay = hall.price_per_day ?? hall.pricePerDay ?? hall.priceperday ?? hall.price ?? 0;
+    
+    // Support both array and string image fields
+    let rawImages = hall.images ?? hall.gallery_images ?? hall.galleryImages ?? hall.galleryimages ?? hall.image ?? [];
+    if (typeof rawImages === 'string') {
+      rawImages = rawImages.trim() ? [rawImages] : [];
+    } else if (Array.isArray(rawImages)) {
+      // Handle legacy JSON-stringified arrays
+      if (rawImages.length === 1 && typeof rawImages[0] === 'string' && rawImages[0].startsWith('[')) {
+        try {
+          const parsed = JSON.parse(rawImages[0]);
+          rawImages = Array.isArray(parsed) ? parsed : rawImages;
+        } catch {
+          // not JSON, keep as is
+        }
+      }
+    } else if (rawImages && typeof rawImages === 'object') {
+      rawImages = [];
+    }
+    
+    const rawAmenities = hall.amenities ?? hall.features ?? [];
+    
     return {
       id: hall.id,
       name: hall.name,
       description: hall.description || '',
-      capacity: hall.capacity || 100,
-      pricePerDay: hall.price_per_day || hall.pricePerDay || 0,
-      amenities: hall.amenities || [],
+      capacity: Number(hall.capacity) || 100,
+      pricePerDay: Number(rawPricePerDay) || 0,
+      amenities: Array.isArray(rawAmenities) ? rawAmenities : [],
       availability: hall.availability !== undefined ? hall.availability : true,
-      images: hall.images || [],
+      images: Array.isArray(rawImages) ? rawImages : [],
       createdAt: hall.created_at || hall.createdAt || '',
       updatedAt: hall.updated_at || hall.updatedAt || ''
     };
