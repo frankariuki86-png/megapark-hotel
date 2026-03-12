@@ -243,26 +243,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             </button>
           </form>
 
-          <div style={{ margin: '20px 0', position: 'relative' }}>
-            <div style={{ 
-              position: 'absolute', 
-              left: 0, 
-              right: 0, 
-              top: '50%', 
-              borderTop: '1px solid #ddd',
-              transform: 'translateY(-50%)'
-            }}></div>
-            <p style={{ 
-              textAlign: 'center', 
-              background: 'white',
-              padding: '0 10px',
-              position: 'relative',
-              color: '#666',
-              fontSize: '14px'
-            }}>
-              Or continue with
-            </p>
-          </div>
+          <div className="auth-divider">Or continue with</div>
 
           <div id="google-signin-btn" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}></div>
 

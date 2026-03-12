@@ -41,6 +41,27 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
   };
 
   // GET - list bookings (protected)
+  // GET /mine - user's own bookings by email (requires auth)
+  router.get('/mine', authenticate, async (req, res) => {
+    const email = req.user?.email;
+    if (!email) return res.status(401).json({ error: 'unauthorized' });
+    try {
+      if (pgClient) {
+        const { rows } = await pgClient.query(
+          'SELECT * FROM bookings WHERE customer_email = $1 ORDER BY created_at DESC',
+          [email]
+        );
+        return res.json(rows.map(b => normalizeDbBooking(b)));
+      }
+      const bookings = readJSON(bookingsPath, []);
+      return res.json(bookings.filter(b => (b.customerEmail || b.customer_email) === email));
+    } catch (e) {
+      logger.error('GET /api/bookings/mine error', e.message);
+      res.status(500).json({ error: 'server_error' });
+    }
+  });
+
+  // GET - list all bookings (admin/protected)
   router.get('/', authenticate, async (req, res) => {
     try {
       if (pgClient) {

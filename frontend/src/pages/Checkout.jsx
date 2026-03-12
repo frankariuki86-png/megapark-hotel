@@ -28,6 +28,17 @@ const Checkout = () => {
     specialRequests: ''
   });
 
+  React.useEffect(() => {
+    if (user) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone
+      }));
+    }
+  }, [user]);
+
   // Initialize quantities on component mount or when cart changes
   React.useEffect(() => {
     const newQuantities = {};
@@ -63,7 +74,7 @@ const Checkout = () => {
     return cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     // Validate customer info
     if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.county || !customerInfo.town || !customerInfo.street) {
       alert('Please fill in required customer details (Name, Email, Phone and full delivery address)');
@@ -114,7 +125,7 @@ const Checkout = () => {
       paymentMethod: 'after'
     };
     
-    const order = placeMenuOrder(orderData);
+    const order = await placeMenuOrder(orderData);
     if (order) {
       alert(`Order placed successfully! Order ID: ${order.id}. We'll contact you soon.`);
       navigate('/orders');
@@ -143,13 +154,18 @@ const Checkout = () => {
       paymentData
     };
     
-    const order = placeMenuOrder(orderData);
+    const order = await placeMenuOrder(orderData);
 
     // process bookings (rooms/halls)
     const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
     for (const item of bookingItems) {
       try {
-        await addBooking(item, paymentData);
+        await addBooking(item, {
+          name: customerInfo.name,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+          paymentData
+        });
       } catch (err) {
         console.error('Failed to sync booking to backend:', err);
       }

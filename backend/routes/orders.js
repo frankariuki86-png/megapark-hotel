@@ -6,6 +6,27 @@ const { sendEmail } = require('../services/emailService');
 
 module.exports = ({ pgClient, readJSON, writeJSON, ordersPath, logger }) => {
   // GET - List all orders (protected)
+  // GET /mine - user's own orders by email (requires auth)
+  router.get('/mine', authenticate, async (req, res) => {
+    const email = req.user?.email;
+    if (!email) return res.status(401).json({ error: 'unauthorized' });
+    try {
+      if (pgClient) {
+        const { rows } = await pgClient.query(
+          'SELECT * FROM food_orders WHERE customer_email = $1 ORDER BY created_at DESC',
+          [email]
+        );
+        return res.json(rows);
+      }
+      const orders = readJSON(ordersPath, []);
+      return res.json(orders.filter(o => (o.customerEmail || o.customer_email) === email));
+    } catch (e) {
+      logger.error('GET /api/orders/mine error', e.message);
+      res.status(500).json({ error: 'server_error' });
+    }
+  });
+
+  // GET - List all orders (admin/protected)
   router.get('/', authenticate, async (req, res) => {
     try {
       if (pgClient) {
