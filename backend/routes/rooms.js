@@ -7,6 +7,13 @@ const { RoomCreateSchema, RoomUpdateSchema } = require('../validators/schemas');
 module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   logger.info('[roomsRouter] Exported function called');
 
+  const pickFirstExisting = (columns, candidates) => {
+    for (const c of candidates) {
+      if (columns.includes(c)) return c;
+    }
+    return null;
+  };
+
   const parseJsonArray = (value) => {
     if (Array.isArray(value)) {
       // Handle legacy data where arrays were stored as JSON.stringify'd strings inside text[]
@@ -30,17 +37,21 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   // Helper to normalize room data from DB (snake_case) to standard camelCase format
   const normalizeDbRoom = (room) => {
     if (!room) return room;
+    const rawRoomNumber = room.room_number ?? room.roomNumber ?? room.roomnumber ?? '';
+    const rawPricePerNight = room.price_per_night ?? room.pricePerNight ?? room.pricepernight ?? room.price ?? 0;
+    const rawImages = room.images ?? room.gallery_images ?? room.galleryImages ?? room.galleryimages;
+    const rawAmenities = room.amenities ?? room.features;
     return {
       id: room.id,
-      roomNumber: room.room_number || room.roomNumber || '',
+      roomNumber: rawRoomNumber,
       name: room.name,
       type: room.type,
       description: room.description || '',
-      pricePerNight: room.price_per_night !== undefined ? room.price_per_night : (room.pricePerNight || 0),
+      pricePerNight: rawPricePerNight,
       capacity: room.capacity || 2,
-      amenities: parseJsonArray(room.amenities),
+      amenities: parseJsonArray(rawAmenities),
       availability: room.availability !== undefined ? room.availability : true,
-      images: parseJsonArray(room.images),
+      images: parseJsonArray(rawImages),
       createdAt: room.created_at || room.createdAt || '',
       updatedAt: room.updated_at || room.updatedAt || ''
     };
@@ -120,13 +131,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
 
         // dynamic mapping from payload keys to whichever column is available
         const keyMap = {};
-        if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
-        // price: prefer new column but fall back to old `price`
-        if (existingCols.includes('price_per_night')) {
-          keyMap.pricePerNight = 'price_per_night';
-        } else if (existingCols.includes('price')) {
-          keyMap.pricePerNight = 'price';
-        }
+        keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber']);
+        keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'price', 'pricePerNight']);
+        keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages']);
+        keyMap.amenities = pickFirstExisting(existingCols, ['amenities', 'features']);
         // type column may or may not exist, but if it does we just use same name
         if (existingCols.includes('type')) keyMap.type = 'type';
 
@@ -135,7 +143,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
 
         for (const [k, v] of Object.entries(payload)) {
           if (v === undefined) continue;
-          const col = keyMap[k] || k;
+          const mapped = keyMap[k];
+          const col = mapped || k;
           if (!existingCols.includes(col)) continue;
           dbCols.push(col);
           values.push(serializeForColumn(col, v));
@@ -218,12 +227,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             };
 
             const keyMap = {};
-            if (existingCols.includes('room_number')) keyMap.roomNumber = 'room_number';
-            if (existingCols.includes('price_per_night')) {
-              keyMap.pricePerNight = 'price_per_night';
-            } else if (existingCols.includes('price')) {
-              keyMap.pricePerNight = 'price';
-            }
+            keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber']);
+            keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'price', 'pricePerNight']);
+            keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages']);
+            keyMap.amenities = pickFirstExisting(existingCols, ['amenities', 'features']);
             if (existingCols.includes('type')) keyMap.type = 'type';
 
             const updates = [];
@@ -231,7 +238,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
             let idx = 1;
             for (const [k, v] of Object.entries(payload)) {
               if (v === undefined) continue;
-              const col = keyMap[k] || k;
+              const mapped = keyMap[k];
+              const col = mapped || k;
               if (!existingCols.includes(col)) continue;
               updates.push(`${col} = $${idx}`);
               values.push(serializeForColumn(col, v));
