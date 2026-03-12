@@ -148,6 +148,15 @@ const readJSON = (p, fallback) => {
 }
 const writeJSON = (p, data) => { fs.writeFileSync(p, JSON.stringify(data, null, 2)); }
 
+// Initialize data files with default seed data if empty or corrupted
+const { initializeDataFiles } = require('./utils/dataInit');
+try {
+  initializeDataFiles(dataDir, readJSON, writeJSON);
+} catch (err) {
+  logger.error('Failed to initialize data files:', err.message);
+  // Continue anyway - fallback will be used
+}
+
 // Helper to seed the database with menus, halls, rooms, and admin user
 async function seedDatabase(pgClient, logger) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@megapark.com';

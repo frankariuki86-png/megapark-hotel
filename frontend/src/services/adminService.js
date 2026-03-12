@@ -292,39 +292,37 @@ export const hallsService = {
     if (payload.pricePerDay !== undefined) payload.pricePerDay = Number(payload.pricePerDay);
 
     const url = `${API_BASE_URL}/halls`;
-    console.log('[hallsService.create] Creating at:', url, 'data:', payload);
-    let res;
-    if (imageFiles && imageFiles.length > 0) {
-      const formData = new FormData();
-      formData.append('name', payload.name || '');
-      formData.append('description', payload.description || '');
-      formData.append('capacity', payload.capacity ?? 0);
-      formData.append('pricePerDay', payload.pricePerDay ?? 0);
-      formData.append('availability', payload.availability !== undefined ? payload.availability : true);
-      if (payload.amenities && Array.isArray(payload.amenities)) {
-        formData.append('amenities', JSON.stringify(payload.amenities));
-      }
-      if (payload.images && Array.isArray(payload.images) && payload.images.length > 0) {
-        formData.append('images', JSON.stringify(payload.images));
-      }
-      for (const file of imageFiles.slice(0, 5)) {
-        formData.append('images', file);
-      }
-      const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: formData
-      });
-    } else {
-      res = await fetch(url, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload)
-      });
+    console.log('[hallsService.create] Creating at:', url, 'data:', payload, 'files:', imageFiles.length);
+    
+    // Always use FormData to ensure consistent request format with file uploads
+    const formData = new FormData();
+    formData.append('name', payload.name || '');
+    formData.append('description', payload.description || '');
+    formData.append('capacity', payload.capacity ?? 0);
+    formData.append('pricePerDay', payload.pricePerDay ?? 0);
+    formData.append('availability', payload.availability !== undefined ? payload.availability : true);
+    if (payload.amenities && Array.isArray(payload.amenities)) {
+      formData.append('amenities', JSON.stringify(payload.amenities));
     }
+    
+    // Only append actual file objects, not JSON strings
+    if (imageFiles && imageFiles.length > 0) {
+      for (const file of imageFiles.slice(0, 5)) {
+        if (file instanceof File) {
+          formData.append('images', file);
+        }
+      }
+    }
+    
+    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
     console.log('[hallsService.create] Response status:', res.status);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
@@ -345,39 +343,37 @@ export const hallsService = {
     if (payload.pricePerDay !== undefined) payload.pricePerDay = Number(payload.pricePerDay);
 
     const url = `${API_BASE_URL}/halls/${id}`;
-    console.log('[hallsService.update] Updating at:', url, 'data:', payload);
-    let res;
-    if (imageFiles && imageFiles.length > 0) {
-      const formData = new FormData();
-      if (payload.name !== undefined) formData.append('name', payload.name);
-      if (payload.description !== undefined) formData.append('description', payload.description);
-      if (payload.capacity !== undefined) formData.append('capacity', payload.capacity);
-      if (payload.pricePerDay !== undefined) formData.append('pricePerDay', payload.pricePerDay);
-      if (payload.availability !== undefined) formData.append('availability', payload.availability);
-      if (payload.amenities && Array.isArray(payload.amenities)) {
-        formData.append('amenities', JSON.stringify(payload.amenities));
-      }
-      if (payload.images && Array.isArray(payload.images) && payload.images.length > 0) {
-        formData.append('images', JSON.stringify(payload.images));
-      }
-      for (const file of imageFiles.slice(0, 5)) {
-        formData.append('images', file);
-      }
-      const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      res = await fetch(url, {
-        method: 'PUT',
-        headers,
-        body: formData
-      });
-    } else {
-      res = await fetch(url, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload)
-      });
+    console.log('[hallsService.update] Updating at:', url, 'data:', payload, 'files:', imageFiles.length);
+    
+    // Always use FormData to ensure consistent request format
+    const formData = new FormData();
+    if (payload.name !== undefined) formData.append('name', payload.name);
+    if (payload.description !== undefined) formData.append('description', payload.description);
+    if (payload.capacity !== undefined) formData.append('capacity', payload.capacity);
+    if (payload.pricePerDay !== undefined) formData.append('pricePerDay', payload.pricePerDay);
+    if (payload.availability !== undefined) formData.append('availability', payload.availability);
+    if (payload.amenities && Array.isArray(payload.amenities)) {
+      formData.append('amenities', JSON.stringify(payload.amenities));
     }
+    
+    // Only append actual file objects, not JSON strings
+    if (imageFiles && imageFiles.length > 0) {
+      for (const file of imageFiles.slice(0, 5)) {
+        if (file instanceof File) {
+          formData.append('images', file);
+        }
+      }
+    }
+    
+    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: formData
+    });
     console.log('[hallsService.update] Response status:', res.status);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
