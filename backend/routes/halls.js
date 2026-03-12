@@ -113,28 +113,34 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
 
             const dbCols = ['id'];
             const values = [id];
+            const arrayColumns = new Set(['images', 'amenities']);
             for (const [k, v] of Object.entries(payload)) {
               if (v === undefined) continue;
               const col = keyMap[k] || k;
               if (!existingCols.includes(col)) continue;
               dbCols.push(col);
-              values.push(v); // pg driver serializes JS arrays to PostgreSQL array format directly
+              values.push(v);
             }
 
-            const placeholders = dbCols.map((_, i) => `$${i + 1}`);
+            // Build placeholders with explicit type casting for array columns
+            const placeholders = dbCols.map((col, i) => {
+              return arrayColumns.has(col) ? `$${i + 1}::text[]` : `$${i + 1}`;
+            });
             const q = `INSERT INTO halls (${dbCols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
             const { rows } = await pgClient.query(q, values);
-            if (rows && rows[0]) {
-              const normalized = normalizeDbHall(rows[0]);
-              try {
-                const hallsFile = readJSON(hallsPath, []);
-                const createdPayload = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
-                hallsFile.unshift(createdPayload);
-                writeJSON(hallsPath, hallsFile);
-              } catch (e) {
-                logger.warn('POST /api/halls - failed to update JSON fallback', e.message);
-              }
-              return res.status(201).json({ ...normalized, ...payload });
+            if (!rows || rows.length === 0) {
+              throw new Error('INSERT returned no rows');
+            }
+            const normalized = normalizeDbHall(rows[0]);
+            try {
+              const hallsFile = readJSON(hallsPath, []);
+              const createdPayload = { id, ...payload, createdAt: new Date().toISOString(), availability: payload.availability !== undefined ? payload.availability : true };
+              hallsFile.unshift(createdPayload);
+              writeJSON(hallsPath, hallsFile);
+            } catch (e) {
+              logger.warn('POST /api/halls - failed to update JSON fallback', e.message);
+            }
+            return res.status(201).json({ ...normalized, ...payload });
             }
           }
         } catch (dbErr) {
@@ -196,12 +202,16 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
             const updates = [];
             const values = [];
             let idx = 1;
+            const arrayColumns = new Set(['images', 'amenities']);
             for (const [k, v] of Object.entries(payload)) {
               if (v === undefined) continue;
               const col = keyMap[k] || k;
               if (!existingCols.includes(col)) continue;
-              updates.push(`${col} = $${idx++}`);
-              values.push(v); // pg driver serializes JS arrays to PostgreSQL array format directly
+              // Add explicit type casting for array columns
+              const cast = arrayColumns.has(col) ? `::text[]` : '';
+              updates.push(`${col} = $${idx}${cast}`);
+              values.push(v);
+              idx++;
             }
 
             if (updates.length > 0) {
