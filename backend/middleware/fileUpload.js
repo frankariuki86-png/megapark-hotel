@@ -217,6 +217,8 @@ const uploadAndOptimizeMultipleImages = async (req, res, next) => {
       next();
     } catch (error) {
       logger.error('[fileUpload] Multiple image processing error:', error.message);
+      return res.status(500).json({
+        error: 'Image optimization failed',
         message: error.message
       });
     }
