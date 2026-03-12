@@ -42,6 +42,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   const normalizeDbRoom = (room) => {
     if (!room) return room;
     const rawRoomNumber = room.room_number ?? room.roomNumber ?? room.roomnumber ?? room.room_no ?? room.roomNo ?? room.number ?? '';
+    // price is the actual DB column name, map it to pricePerNight
     const rawPricePerNight = room.price_per_night ?? room.pricePerNight ?? room.pricepernight ?? room.price ?? 0;
     const rawImages = room.images ?? room.gallery_images ?? room.galleryImages ?? room.galleryimages ?? room.image;
     const rawAmenities = room.amenities ?? room.features;
@@ -52,8 +53,8 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
       name: room.name,
       type: rawType,
       description: room.description || '',
-      pricePerNight: rawPricePerNight,
-      capacity: room.capacity || 2,
+      pricePerNight: Number(rawPricePerNight) || 0,
+      capacity: Number(room.capacity) || 2,
       amenities: parseJsonArray(rawAmenities),
       availability: room.availability !== undefined ? room.availability : true,
       images: parseJsonArray(rawImages),
@@ -137,7 +138,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         // dynamic mapping from payload keys to whichever column is available
         const keyMap = {};
         keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber', 'room_no', 'roomNo', 'number']);
-        keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'price', 'pricePerNight']);
+        keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'pricePerNight', 'price']);
         keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages', 'image']);
         keyMap.amenities = pickFirstExisting(existingCols, ['amenities', 'features']);
         keyMap.type = pickFirstExisting(existingCols, ['type', 'room_type', 'roomType', 'category']);
@@ -232,7 +233,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
 
             const keyMap = {};
             keyMap.roomNumber = pickFirstExisting(existingCols, ['room_number', 'roomnumber', 'roomNumber', 'room_no', 'roomNo', 'number']);
-            keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'price', 'pricePerNight']);
+            keyMap.pricePerNight = pickFirstExisting(existingCols, ['price_per_night', 'pricepernight', 'pricePerNight', 'price']);
             keyMap.images = pickFirstExisting(existingCols, ['images', 'gallery_images', 'galleryimages', 'galleryImages', 'image']);
             keyMap.amenities = pickFirstExisting(existingCols, ['amenities', 'features']);
             keyMap.type = pickFirstExisting(existingCols, ['type', 'room_type', 'roomType', 'category']);
