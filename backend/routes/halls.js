@@ -141,7 +141,6 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
               logger.warn('POST /api/halls - failed to update JSON fallback', e.message);
             }
             return res.status(201).json({ ...normalized, ...payload });
-            }
           }
         } catch (dbErr) {
           logger.warn('POST /api/halls DB error:', dbErr.message);
