@@ -8,7 +8,16 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   logger.info('[hallsRouter] Exported function called');
 
   const parseJsonArray = (value) => {
-    if (Array.isArray(value)) return value;
+    if (Array.isArray(value)) {
+      // Handle legacy data where arrays were stored as JSON.stringify'd strings inside text[]
+      if (value.length === 1 && typeof value[0] === 'string' && value[0].startsWith('[')) {
+        try {
+          const inner = JSON.parse(value[0]);
+          if (Array.isArray(inner)) return inner;
+        } catch { /* not JSON, treat as normal string element */ }
+      }
+      return value;
+    }
     if (typeof value !== 'string') return [];
     try {
       const parsed = JSON.parse(value);
@@ -51,24 +60,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
         try {
           const { rows } = await pgClient.query('SELECT * FROM halls ORDER BY created_at DESC');
           logger.info('GET /api/halls - DB query successful, rows:', rows.length);
-
-          // merge JSON fallback items that aren't in DB yet
-          const jsonHalls = readJSON(hallsPath, []);
-          if (jsonHalls && jsonHalls.length) {
-            // only include those not already returned by DB (by id)
-            const dbIds = new Set(rows.map(r => r.id));
-            const extra = jsonHalls.filter(h => !dbIds.has(h.id));
-            if (extra.length) {
-              logger.info('GET /api/halls - adding', extra.length, 'fallback halls to DB result');
-              rows.unshift(...extra);
-            }
-          }
-
-          const normalized = rows.map(r => {
-            const base = normalizeDbHall(r);
-            const extra = jsonHalls.find(h => h.id === r.id);
-            return extra ? { ...base, ...extra } : base;
-          });
+          // DB is the single source of truth — never merge/override with local JSON
+          // (JSON file is ephemeral on Render and resets on every restart)
+          const normalized = rows.map(r => normalizeDbHall(r));
           return res.json(normalized);
         } catch (dbErr) {
           logger.warn('GET /api/halls - DB query failed, falling back to JSON:', dbErr.message);
@@ -124,7 +118,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
               const col = keyMap[k] || k;
               if (!existingCols.includes(col)) continue;
               dbCols.push(col);
-              values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+              values.push(v); // pg driver serializes JS arrays to PostgreSQL array format directly
             }
 
             const placeholders = dbCols.map((_, i) => `$${i + 1}`);
@@ -207,7 +201,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
               const col = keyMap[k] || k;
               if (!existingCols.includes(col)) continue;
               updates.push(`${col} = $${idx++}`);
-              values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+              values.push(v); // pg driver serializes JS arrays to PostgreSQL array format directly
             }
 
             if (updates.length > 0) {

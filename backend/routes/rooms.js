@@ -8,7 +8,16 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   logger.info('[roomsRouter] Exported function called');
 
   const parseJsonArray = (value) => {
-    if (Array.isArray(value)) return value;
+    if (Array.isArray(value)) {
+      // Handle legacy data where arrays were stored as JSON.stringify'd strings inside text[]
+      if (value.length === 1 && typeof value[0] === 'string' && value[0].startsWith('[')) {
+        try {
+          const inner = JSON.parse(value[0]);
+          if (Array.isArray(inner)) return inner;
+        } catch { /* not JSON, treat as normal string element */ }
+      }
+      return value;
+    }
     if (typeof value !== 'string') return [];
     try {
       const parsed = JSON.parse(value);
@@ -52,25 +61,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
         try {
           const { rows } = await pgClient.query('SELECT * FROM rooms ORDER BY created_at DESC');
           logger.info('GET /api/rooms - DB query successful, rows:', rows.length);
-
-          // add any JSON fallback items not yet persisted in the database
-          const jsonRooms = readJSON(roomsPath, []);
-          if (jsonRooms && jsonRooms.length) {
-            const dbIds = new Set(rows.map(r => r.id));
-            const extra = jsonRooms.filter(r => !dbIds.has(r.id));
-            if (extra.length) {
-              logger.info('GET /api/rooms - adding', extra.length, 'fallback rooms to DB result');
-              rows.unshift(...extra);
-            }
-          }
-
-          // normalize all rooms to camelCase format
-          // merge with any fallback JSON entries that may have extra fields
-          const normalized = rows.map(r => {
-            const base = normalizeDbRoom(r);
-            const extra = jsonRooms.find(j => j.id === r.id);
-            return extra ? { ...base, ...extra } : base;
-          });
+          // DB is the single source of truth — never merge/override with local JSON
+          // (JSON file is ephemeral on Render and resets on every restart)
+          const normalized = rows.map(r => normalizeDbRoom(r));
           return res.json(normalized);
         } catch (dbErr) {
           logger.warn('GET /api/rooms - DB query failed, falling back to JSON:', dbErr.message);
@@ -134,7 +127,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
           const col = keyMap[k] || k;
           if (!existingCols.includes(col)) continue;
           dbCols.push(col);
-          values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+          values.push(v); // pg driver serializes JS arrays to PostgreSQL array format directly
         }
 
         const placeholders = dbCols.map((_, i) => `$${i + 1}`);
@@ -218,7 +211,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
               if (!existingCols.includes(col)) continue;
 
               updates.push(`${col} = $${idx++}`);
-              values.push(Array.isArray(v) ? JSON.stringify(v) : v);
+              values.push(v); // pg driver serializes JS arrays to PostgreSQL array format directly
             }
             if (updates.length === 0) return res.status(400).json({ error: 'no_updates' });
             const q = `UPDATE rooms SET ${updates.join(',')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
