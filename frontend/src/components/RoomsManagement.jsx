@@ -2,6 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { roomsService } from '../services/adminService';
 import '../styles/admin-management.css';
 
+// Resize image file to max 800x800 and return a base64 JPEG (~50-100KB each)
+const resizeImageToBase64 = (file, maxSize = 800, quality = 0.78) =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
 const RoomsManagement = () => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -275,24 +299,16 @@ const RoomsManagement = () => {
                   type="file"
                   multiple
                   accept="image/*"
-                  required={!editingId}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const files = Array.from(e.target.files || []).slice(0, 5);
                     setImageFiles(files);
-                    Promise.all(files.map(file => {
-                      return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(reader.result);
-                        reader.readAsDataURL(file);
-                      });
-                    })).then(images => {
-                      setFormData({...formData, images});
-                    });
+                    const base64Images = await Promise.all(files.map(f => resizeImageToBase64(f)));
+                    setFormData(prev => ({...prev, images: base64Images}));
                   }}
                 />
                 {imageFiles.length > 0 && <p style={{fontSize: '12px'}}>{imageFiles.length} file(s) selected</p>}
               </div>
-              {formData.images && formData.images.map((img, idx) => (
+              {formData.images && formData.images.filter(img => img && img.startsWith('data:')).map((img, idx) => (
                 <img key={idx} src={img} alt={`preview-${idx}`} style={{width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px'}} />
               ))}
             </div>

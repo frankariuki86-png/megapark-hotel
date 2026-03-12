@@ -91,41 +91,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   });
 
   // POST - Create room (protected)
-  router.post('/', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
+  router.post('/', authenticate, async (req, res) => {
     try {
-      // accept legacy `price` field from older clients
+      // Accept JSON body - images are base64 data URLs stored directly in DB (no ephemeral disk)
       const body = { ...req.body };
-      
-      // Convert FormData string values to proper types
-      if (body.pricePerNight) body.pricePerNight = parseFloat(body.pricePerNight);
-      if (body.capacity) body.capacity = parseInt(body.capacity, 10);
-      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
-      
-      // Parse JSON strings from FormData
-      if (body.amenities && typeof body.amenities === 'string') {
-        try {
-          body.amenities = JSON.parse(body.amenities);
-        } catch (e) {
-          body.amenities = [];
-        }
-      }
       
       if (body.price !== undefined && body.pricePerNight === undefined) {
         body.pricePerNight = parseFloat(body.price);
         delete body.price;
-      }
-
-      // Handle uploaded image files: add their URLs to the images array
-      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
-        const uploadedImageUrls = req.optimizedFiles.map(f => f.optimizedUrl);
-        body.images = uploadedImageUrls;
-      } else if (body.images && typeof body.images === 'string') {
-        // If images came as a JSON string (from FormData), parse them
-        try {
-          body.images = JSON.parse(body.images);
-        } catch (e) {
-          body.images = [];
-        }
       }
       
       logger.info('POST /api/rooms body after conversion:', body);
@@ -199,42 +172,15 @@ module.exports = ({ pgClient, readJSON, writeJSON, roomsPath, logger }) => {
   });
 
   // PUT - Update room (protected)
-  router.put('/:id', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
+  router.put('/:id', authenticate, async (req, res) => {
     try {
       const id = req.params.id;
-      // allow legacy `price` key as alias
+      // Accept JSON body - images are base64 data URLs stored directly in DB (no ephemeral disk)
       const body = { ...req.body };
-      
-      // Convert FormData string values to proper types
-      if (body.pricePerNight) body.pricePerNight = parseFloat(body.pricePerNight);
-      if (body.capacity) body.capacity = parseInt(body.capacity, 10);
-      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
-      
-      // Parse JSON strings from FormData
-      if (body.amenities && typeof body.amenities === 'string') {
-        try {
-          body.amenities = JSON.parse(body.amenities);
-        } catch (e) {
-          body.amenities = [];
-        }
-      }
-      
+
       if (body.price !== undefined && body.pricePerNight === undefined) {
         body.pricePerNight = parseFloat(body.price);
         delete body.price;
-      }
-
-      // Handle uploaded image files: add their URLs to the images array
-      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
-        const uploadedImageUrls = req.optimizedFiles.map(f => f.optimizedUrl);
-        body.images = uploadedImageUrls;
-      } else if (body.images && typeof body.images === 'string') {
-        // If images came as a JSON string (from FormData), parse them
-        try {
-          body.images = JSON.parse(body.images);
-        } catch (e) {
-          body.images = [];
-        }
       }
       
       const payload = RoomUpdateSchema.parse(body);

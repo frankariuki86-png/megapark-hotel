@@ -84,33 +84,13 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   });
 
   // POST - Create hall (protected)
-  router.post('/', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
+  router.post('/', authenticate, async (req, res) => {
     try {
+      // Accept JSON body - images are base64 data URLs stored directly in DB (no ephemeral disk)
       const body = { ...req.body };
-      if (body.capacity !== undefined) body.capacity = parseInt(body.capacity, 10);
-      if (body.pricePerDay !== undefined) body.pricePerDay = parseFloat(body.pricePerDay);
-      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
-      if (body.amenities && typeof body.amenities === 'string') {
-        try {
-          body.amenities = JSON.parse(body.amenities);
-        } catch (e) {
-          body.amenities = [];
-        }
-      }
-      if (body.images && typeof body.images === 'string') {
-        try {
-          body.images = JSON.parse(body.images);
-        } catch (e) {
-          body.images = [];
-        }
-      }
       if (body.price !== undefined && body.pricePerDay === undefined) {
         body.pricePerDay = parseFloat(body.price);
         delete body.price;
-      }
-
-      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
-        body.images = req.optimizedFiles.map(f => f.optimizedUrl);
       }
 
       const payload = HallCreateSchema.parse(body);
@@ -185,34 +165,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, hallsPath, logger }) => {
   });
 
   // PUT - Update hall (protected)
-  router.put('/:id', authenticate, uploadAndOptimizeMultipleImages, async (req, res) => {
+  router.put('/:id', authenticate, async (req, res) => {
     try {
       const id = req.params.id;
+      // Accept JSON body - images are base64 data URLs stored directly in DB (no ephemeral disk)
       const body = { ...req.body };
-      if (body.capacity !== undefined) body.capacity = parseInt(body.capacity, 10);
-      if (body.pricePerDay !== undefined) body.pricePerDay = parseFloat(body.pricePerDay);
-      if (body.availability !== undefined) body.availability = body.availability === 'true' || body.availability === true;
-      if (body.amenities && typeof body.amenities === 'string') {
-        try {
-          body.amenities = JSON.parse(body.amenities);
-        } catch (e) {
-          body.amenities = [];
-        }
-      }
-      if (body.images && typeof body.images === 'string') {
-        try {
-          body.images = JSON.parse(body.images);
-        } catch (e) {
-          body.images = [];
-        }
-      }
       if (body.price !== undefined && body.pricePerDay === undefined) {
         body.pricePerDay = parseFloat(body.price);
         delete body.price;
-      }
-
-      if (req.optimizedFiles && req.optimizedFiles.length > 0) {
-        body.images = req.optimizedFiles.map(f => f.optimizedUrl);
       }
 
       const payload = HallUpdateSchema.parse(body);

@@ -124,8 +124,8 @@ export const roomsService = {
     return data;
   },
 
-  async create(room, imageFiles = []) {
-    // normalize legacy price field and ensure numeric types
+  async create(room, _imageFiles = []) {
+    // Images are already base64 strings in room.images (converted by FileReader in the component)
     const payload = { ...room };
     if (payload.price !== undefined && payload.pricePerNight === undefined) {
       payload.pricePerNight = parseFloat(payload.price);
@@ -134,50 +134,18 @@ export const roomsService = {
     if (payload.pricePerNight !== undefined) payload.pricePerNight = Number(payload.pricePerNight);
 
     const url = `${API_BASE_URL}/rooms`;
-    console.log('[roomsService.create] Creating at:', url, 'data:', payload, 'files:', imageFiles.length);
-    
-    // Build FormData to support file uploads
-    const formData = new FormData();
-    
-    // Add all room data fields
-    formData.append('name', payload.name);
-    formData.append('roomNumber', payload.roomNumber);
-    formData.append('type', payload.type);
-    formData.append('description', payload.description || '');
-    formData.append('pricePerNight', payload.pricePerNight);
-    formData.append('capacity', payload.capacity);
-    formData.append('availability', payload.availability);
-    if (payload.amenities && Array.isArray(payload.amenities)) {
-      formData.append('amenities', JSON.stringify(payload.amenities));
-    }
-    
-    // Add image files if provided
-    if (imageFiles && imageFiles.length > 0) {
-      for (const file of imageFiles) {
-        formData.append('images', file);
-      }
-    }
-
-    // Get auth headers without Content-Type (let browser set it for multipart/form-data)
-    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
+    console.log('[roomsService.create] Creating at:', url, 'images:', (payload.images || []).length);
     const res = await fetch(url, {
       method: 'POST',
-      headers,
-      body: formData
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
     });
     console.log('[roomsService.create] Response status:', res.status);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       console.error('[roomsService.create] Error:', error);
       let errorMsg = error.error || 'Failed to create room';
-      if (error.details) {
-        errorMsg += ': ' + JSON.stringify(error.details);
-      }
+      if (error.details) errorMsg += ': ' + JSON.stringify(error.details);
       throw new Error(errorMsg);
     }
     const data = await res.json();
@@ -185,7 +153,8 @@ export const roomsService = {
     return data;
   },
 
-  async update(id, room, imageFiles = []) {
+  async update(id, room, _imageFiles = []) {
+    // Images are already base64 strings in room.images (converted by FileReader in the component)
     const payload = { ...room };
     if (payload.price !== undefined && payload.pricePerNight === undefined) {
       payload.pricePerNight = parseFloat(payload.price);
@@ -194,50 +163,18 @@ export const roomsService = {
     if (payload.pricePerNight !== undefined) payload.pricePerNight = Number(payload.pricePerNight);
 
     const url = `${API_BASE_URL}/rooms/${id}`;
-    console.log('[roomsService.update] Updating at:', url, 'data:', payload, 'files:', imageFiles.length);
-    
-    // Build FormData to support file uploads
-    const formData = new FormData();
-    
-    // Add all room data fields
-    if (payload.name) formData.append('name', payload.name);
-    if (payload.roomNumber) formData.append('roomNumber', payload.roomNumber);
-    if (payload.type) formData.append('type', payload.type);
-    if (payload.description !== undefined) formData.append('description', payload.description);
-    if (payload.pricePerNight !== undefined) formData.append('pricePerNight', payload.pricePerNight);
-    if (payload.capacity !== undefined) formData.append('capacity', payload.capacity);
-    if (payload.availability !== undefined) formData.append('availability', payload.availability);
-    if (payload.amenities && Array.isArray(payload.amenities)) {
-      formData.append('amenities', JSON.stringify(payload.amenities));
-    }
-    
-    // Add image files if provided
-    if (imageFiles && imageFiles.length > 0) {
-      for (const file of imageFiles) {
-        formData.append('images', file);
-      }
-    }
-
-    // Get auth headers without Content-Type (let browser set it for multipart/form-data)
-    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
+    console.log('[roomsService.update] Updating at:', url, 'images:', (payload.images || []).length);
     const res = await fetch(url, {
       method: 'PUT',
-      headers,
-      body: formData
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
     });
     console.log('[roomsService.update] Response status:', res.status);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       console.error('[roomsService.update] Error:', error);
       let errorMsg = error.error || 'Failed to update room';
-      if (error.details) {
-        errorMsg += ': ' + JSON.stringify(error.details);
-      }
+      if (error.details) errorMsg += ': ' + JSON.stringify(error.details);
       throw new Error(errorMsg);
     }
     const data = await res.json();
@@ -283,7 +220,8 @@ export const hallsService = {
     return data;
   },
 
-  async create(hall, imageFiles = []) {
+  async create(hall, _imageFiles = []) {
+    // Images are already base64 strings in hall.images (converted by FileReader in the component)
     const payload = { ...hall };
     if (payload.price !== undefined && payload.pricePerDay === undefined) {
       payload.pricePerDay = parseFloat(payload.price);
@@ -292,36 +230,11 @@ export const hallsService = {
     if (payload.pricePerDay !== undefined) payload.pricePerDay = Number(payload.pricePerDay);
 
     const url = `${API_BASE_URL}/halls`;
-    console.log('[hallsService.create] Creating at:', url, 'data:', payload, 'files:', imageFiles.length);
-    
-    // Always use FormData to ensure consistent request format with file uploads
-    const formData = new FormData();
-    formData.append('name', payload.name || '');
-    formData.append('description', payload.description || '');
-    formData.append('capacity', payload.capacity ?? 0);
-    formData.append('pricePerDay', payload.pricePerDay ?? 0);
-    formData.append('availability', payload.availability !== undefined ? payload.availability : true);
-    if (payload.amenities && Array.isArray(payload.amenities)) {
-      formData.append('amenities', JSON.stringify(payload.amenities));
-    }
-    
-    // Only append actual file objects, not JSON strings
-    if (imageFiles && imageFiles.length > 0) {
-      for (const file of imageFiles.slice(0, 5)) {
-        if (file instanceof File) {
-          formData.append('images', file);
-        }
-      }
-    }
-    
-    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    
+    console.log('[hallsService.create] Creating at:', url, 'images:', (payload.images || []).length);
     const res = await fetch(url, {
       method: 'POST',
-      headers,
-      body: formData
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
     });
     console.log('[hallsService.create] Response status:', res.status);
     if (!res.ok) {
@@ -334,7 +247,8 @@ export const hallsService = {
     return data;
   },
 
-  async update(id, hall, imageFiles = []) {
+  async update(id, hall, _imageFiles = []) {
+    // Images are already base64 strings in hall.images (converted by FileReader in the component)
     const payload = { ...hall };
     if (payload.price !== undefined && payload.pricePerDay === undefined) {
       payload.pricePerDay = parseFloat(payload.price);
@@ -343,36 +257,11 @@ export const hallsService = {
     if (payload.pricePerDay !== undefined) payload.pricePerDay = Number(payload.pricePerDay);
 
     const url = `${API_BASE_URL}/halls/${id}`;
-    console.log('[hallsService.update] Updating at:', url, 'data:', payload, 'files:', imageFiles.length);
-    
-    // Always use FormData to ensure consistent request format
-    const formData = new FormData();
-    if (payload.name !== undefined) formData.append('name', payload.name);
-    if (payload.description !== undefined) formData.append('description', payload.description);
-    if (payload.capacity !== undefined) formData.append('capacity', payload.capacity);
-    if (payload.pricePerDay !== undefined) formData.append('pricePerDay', payload.pricePerDay);
-    if (payload.availability !== undefined) formData.append('availability', payload.availability);
-    if (payload.amenities && Array.isArray(payload.amenities)) {
-      formData.append('amenities', JSON.stringify(payload.amenities));
-    }
-    
-    // Only append actual file objects, not JSON strings
-    if (imageFiles && imageFiles.length > 0) {
-      for (const file of imageFiles.slice(0, 5)) {
-        if (file instanceof File) {
-          formData.append('images', file);
-        }
-      }
-    }
-    
-    const token = localStorage.getItem('__megapark_jwt__') || localStorage.getItem('adminToken');
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    
+    console.log('[hallsService.update] Updating at:', url, 'images:', (payload.images || []).length);
     const res = await fetch(url, {
       method: 'PUT',
-      headers,
-      body: formData
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
     });
     console.log('[hallsService.update] Response status:', res.status);
     if (!res.ok) {
