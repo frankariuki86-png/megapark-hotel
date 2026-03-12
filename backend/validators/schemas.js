@@ -179,7 +179,7 @@ const HallQuoteUpdateSchema = z.object({
 const RoomCreateSchema = z.object({
   roomNumber: z.string().min(1, 'room number required').max(50),
   name: z.string().min(1, 'name required').max(255),
-  type: z.enum(['standard', 'double', 'deluxe', 'suite', 'executive']).default('standard'),
+  type: z.string().min(1).max(100).default('standard'),
   description: z.string().optional(),
   pricePerNight: z.number().min(0, 'price must be >= 0'),
   images: z.array(z.string()).optional().default([]),
@@ -191,7 +191,7 @@ const RoomCreateSchema = z.object({
 const RoomUpdateSchema = z.object({
   roomNumber: z.string().max(50).optional(),
   name: z.string().max(255).optional(),
-  type: z.enum(['standard', 'double', 'deluxe', 'suite', 'executive']).optional(),
+  type: z.string().min(1).max(100).optional(),
   description: z.string().optional(),
   pricePerNight: z.number().min(0).optional(),
   images: z.array(z.string()).optional(),

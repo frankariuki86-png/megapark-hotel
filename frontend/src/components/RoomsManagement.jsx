@@ -213,16 +213,24 @@ const RoomsManagement = () => {
 
             <div className="form-group">
               <label>Type *</label>
-              <select
+              <input
+                type="text"
+                list="room-type-suggestions"
                 value={formData.type}
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
-              >
-                <option value="standard">Standard</option>
-                <option value="double">Double</option>
-                <option value="deluxe">Deluxe</option>
-                <option value="suite">Suite</option>
-                <option value="executive">Executive</option>
-              </select>
+                placeholder="e.g. Standard, Suite, Executive..."
+                required
+              />
+              <datalist id="room-type-suggestions">
+                <option value="Standard" />
+                <option value="Double" />
+                <option value="Deluxe" />
+                <option value="Suite" />
+                <option value="Executive" />
+                <option value="Family" />
+                <option value="Penthouse" />
+                <option value="Budget" />
+              </datalist>
             </div>
           </div>
 
@@ -260,9 +268,10 @@ const RoomsManagement = () => {
               <input
                 type="number"
                 min="0"
-                step="100"
-                value={formData.pricePerNight || 0}
+                step="any"
+                value={formData.pricePerNight || ''}
                 onChange={(e) => setFormData({...formData, pricePerNight: parseFloat(e.target.value) || 0})}
+                placeholder="Enter amount in KES"
                 required
               />
             </div>
