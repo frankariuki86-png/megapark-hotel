@@ -65,8 +65,13 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       ['customer_name', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_name text`],
       ['customer_email', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_email text`],
       ['customer_phone', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_phone text`],
+      ['guest_name', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_name text`],
       ['booking_type', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type text DEFAULT 'room'`],
       ['booking_data', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_data jsonb DEFAULT '{}'::jsonb`],
+      ['room_id', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS room_id text`],
+      ['hall_id', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hall_id text`],
+      ['check_in', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS check_in timestamptz`],
+      ['check_out', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS check_out timestamptz`],
       ['total', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total numeric DEFAULT 0`],
       ['status', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`],
       ['payment_status', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending'`],
@@ -144,48 +149,57 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
   const insertBookingRow = async (id, payload) => {
     const columns = await getBookingsColumns();
 
-    if (columns.has('customer_name') && columns.has('booking_type') && columns.has('booking_data') && columns.has('total')) {
-      const q = `INSERT INTO bookings (id, customer_name, customer_email, customer_phone, booking_type, booking_data, total, payment_status, payment_data, status)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
-      const values = [
-        id,
-        payload.customerName,
-        payload.customerEmail || null,
-        payload.customerPhone || null,
-        payload.bookingType,
-        JSON.stringify(payload.bookingData || {}),
-        payload.total,
-        payload.paymentStatus,
-        JSON.stringify(payload.paymentData ?? null),
-        payload.status
-      ];
-      const { rows } = await pgClient.query(q, values);
-      return rows[0];
+    const bookingData = payload.bookingData || {};
+    const roomId = bookingData.roomId || bookingData.room_id || null;
+    const hallId = bookingData.hallId || bookingData.hall_id || null;
+    const checkInRaw = bookingData.checkIn || bookingData.check_in || null;
+    const checkOutRaw = bookingData.checkOut || bookingData.check_out || null;
+
+    if (payload.bookingType === 'room' && columns.has('room_id') && !roomId) {
+      throw new Error('Room ID is required for room booking');
     }
 
-    if (columns.has('type') && columns.has('payload') && columns.has('total_price')) {
-      const legacyPayload = {
-        customerName: payload.customerName,
-        customerEmail: payload.customerEmail || null,
-        customerPhone: payload.customerPhone || null,
-        ...payload.bookingData
-      };
-      const q = `INSERT INTO bookings (id, type, payload, total_price, status, payment_status)
-                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`;
-      const legacyStatus = payload.status === 'pending' ? 'booked' : payload.status;
-      const values = [
-        id,
-        payload.bookingType,
-        JSON.stringify(legacyPayload),
-        payload.total,
-        legacyStatus,
-        payload.paymentStatus
-      ];
-      const { rows } = await pgClient.query(q, values);
-      return rows[0];
+    const insertColumns = [];
+    const values = [];
+    const addValue = (column, value) => {
+      if (columns.has(column)) {
+        insertColumns.push(column);
+        values.push(value);
+      }
+    };
+
+    addValue('id', id);
+    addValue('customer_name', payload.customerName);
+    addValue('guest_name', payload.customerName);
+    addValue('customer_email', payload.customerEmail || null);
+    addValue('customer_phone', payload.customerPhone || null);
+    addValue('booking_type', payload.bookingType);
+    addValue('type', payload.bookingType);
+    addValue('booking_data', JSON.stringify(bookingData));
+    addValue('payload', JSON.stringify({
+      customerName: payload.customerName,
+      customerEmail: payload.customerEmail || null,
+      customerPhone: payload.customerPhone || null,
+      ...bookingData
+    }));
+    addValue('room_id', roomId);
+    addValue('hall_id', hallId);
+    addValue('check_in', checkInRaw ? new Date(checkInRaw) : null);
+    addValue('check_out', checkOutRaw ? new Date(checkOutRaw) : null);
+    addValue('total', payload.total);
+    addValue('total_price', payload.total);
+    addValue('payment_status', payload.paymentStatus);
+    addValue('payment_data', JSON.stringify(payload.paymentData ?? null));
+    addValue('status', payload.status === 'pending' && columns.has('type') ? 'booked' : payload.status);
+
+    if (!insertColumns.includes('id')) {
+      throw new Error('Bookings table is missing id column for insert');
     }
 
-    throw new Error('Bookings table is missing required columns for insert');
+    const placeholders = values.map((_, idx) => `$${idx + 1}`).join(',');
+    const q = `INSERT INTO bookings (${insertColumns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+    const { rows } = await pgClient.query(q, values);
+    return rows[0];
   };
 
   // Helper to normalize booking data from DB (snake_case) to standard camelCase format
@@ -208,10 +222,10 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       guestName: booking.customer_name || booking.customerName || bookingData.customerName || bookingData.guestName || '',
       email: booking.customer_email || booking.customerEmail || bookingData.customerEmail || '',
       phone: booking.customer_phone || booking.customerPhone || bookingData.customerPhone || '',
-      roomName: bookingData.roomName || bookingData.room_name || '',
-      roomId: bookingData.roomId || bookingData.room_id || '',
-      checkIn: bookingData.checkIn || bookingData.check_in || '',
-      checkOut: bookingData.checkOut || bookingData.check_out || '',
+      roomName: bookingData.roomName || bookingData.room_name || booking.room_name || '',
+      roomId: bookingData.roomId || bookingData.room_id || booking.room_id || '',
+      checkIn: bookingData.checkIn || bookingData.check_in || booking.check_in || '',
+      checkOut: bookingData.checkOut || bookingData.check_out || booking.check_out || '',
       nights: bookingData.nights || 0,
       guests: bookingData.guests || 0,
       totalPrice: booking.total || booking.totalPrice || booking.total_price || 0,
