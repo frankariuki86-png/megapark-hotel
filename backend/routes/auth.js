@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const { LoginSchema, RegisterSchema } = require('../validators/schemas');
 const { authenticate, generateTokenPair, refreshAccessToken } = require('../middleware/authenticate');
@@ -181,7 +182,8 @@ module.exports = ({ logger, pgClient }) => {
           }
 
           const passwordHash = await bcrypt.hash(password, 10);
-          const id = `user-${Date.now()}`;
+          // Use UUID so registration works on DBs where users.id is uuid-typed.
+          const id = uuidv4();
           const fullName = `${firstName} ${lastName}`.trim();
           
           await pgClient.query(
@@ -209,7 +211,10 @@ module.exports = ({ logger, pgClient }) => {
           if (dbErr.code === '23505') {
             return res.status(409).json({ error: 'Account already exists' });
           }
-          return res.status(500).json({ error: 'Failed to create account' });
+          return res.status(500).json({
+            error: 'Failed to create account',
+            details: [{ message: dbErr.message || 'Database registration error' }]
+          });
         }
       }
 

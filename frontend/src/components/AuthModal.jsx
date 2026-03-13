@@ -4,6 +4,10 @@ import '../styles/account.css';
 
 const AuthModal = ({ isOpen, onClose }) => {
   const { register, login, googleLogin } = useUser();
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const isGoogleConfigured = Boolean(
+    googleClientId && !String(googleClientId).includes('YOUR_GOOGLE_CLIENT_ID')
+  );
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -18,20 +22,20 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   // Initialize Google Sign-In button when modal opens
   useEffect(() => {
-    if (isOpen && window.google) {
+    if (isOpen && window.google && isGoogleConfigured) {
       // Initialize after a short delay to ensure DOM is ready
       setTimeout(() => {
         window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+          client_id: googleClientId,
           callback: handleGoogleSignIn
         });
         window.google.accounts.id.renderButton(
           document.getElementById('google-signin-btn'),
-          { theme: 'outline', size: 'large', width: '100%' }
+          { theme: 'outline', size: 'large', width: 320 }
         );
       }, 100);
     }
-  }, [isOpen]);
+  }, [isOpen, isGoogleConfigured, googleClientId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -249,9 +253,12 @@ const AuthModal = ({ isOpen, onClose }) => {
             </button>
           </form>
 
-          <div className="auth-divider">Or continue with</div>
-
-          <div id="google-signin-btn" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}></div>
+          {isGoogleConfigured && (
+            <>
+              <div className="auth-divider">Or continue with</div>
+              <div id="google-signin-btn" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}></div>
+            </>
+          )}
 
           <div className="auth-toggle">
             <p>
