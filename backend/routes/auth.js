@@ -32,6 +32,18 @@ module.exports = ({ logger, pgClient }) => {
         updated_at timestamptz DEFAULT now()
       )
     `);
+    // Add missing columns to pre-existing tables (ALTER TABLE is a no-op if column already exists)
+    const alterColumns = [
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS name text`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS role text DEFAULT 'customer'`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now()`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()`,
+    ];
+    for (const sql of alterColumns) {
+      await pgClient.query(sql);
+    }
   };
 
   // Helper to find user by email. If `pgClient` is provided, query the database,
