@@ -170,25 +170,7 @@ export const CartProvider = ({ children }) => {
       return newOrder;
     } catch (err) {
       console.error('Failed to place order:', err);
-      // Fallback to local-only order if backend fails
-      const fallbackOrder = {
-        id: `ORD-${Date.now()}`,
-        type: 'menu',
-        date: orderDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        dateTime: orderDate.toISOString(),
-        items: menuItems,
-        total: totalAmount,
-        status: 'pending',
-        paymentStatus: paymentMethod === 'before' ? 'paid' : 'pending',
-        paymentMethod,
-        paymentData: paymentData || null,
-        deliveryDate: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        estimatedDelivery: delivery.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        tracking: { stage: 1, lastUpdate: orderDate.toISOString(), location: 'Pending admin approval' }
-      };
-      setCart(prev => prev.filter(item => item.type !== 'food'));
-      setOrders(prevOrders => [fallbackOrder, ...prevOrders]);
-      return fallbackOrder;
+      throw err;
     }
   }, [cart]);
 
@@ -311,8 +293,7 @@ export const CartProvider = ({ children }) => {
       };
     } catch (err) {
       console.error('Booking/payout failed:', err.message || err);
-      // leave local booking as pending
-      return localBooking;
+      throw err;
     }
   }, []);
 

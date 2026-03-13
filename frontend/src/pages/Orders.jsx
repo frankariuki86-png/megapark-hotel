@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import '../styles/orders.css';
 
 const Orders = () => {
+  const location = useLocation();
   const { orders, addToCart } = useCart();
+  const { user, orderHistory, bookingHistory, fetchOrderHistory, fetchBookingHistory, historyLoading } = useUser();
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrderHistory();
+      fetchBookingHistory();
+    }
+  }, [user, fetchOrderHistory, fetchBookingHistory]);
 
   const handleAddToCart = (item) => {
     addToCart(item);
@@ -43,7 +53,9 @@ const Orders = () => {
     return labels[status] || 'Unknown';
   };
 
-  if (orders.length === 0) {
+  const hasServerHistory = (orderHistory?.length || 0) > 0 || (bookingHistory?.length || 0) > 0;
+
+  if (orders.length === 0 && !hasServerHistory) {
     return (
       <div className="orders-page page-fade">
         <div className="main">
@@ -63,6 +75,39 @@ const Orders = () => {
     <div className="orders-page page-fade">
       <div className="main">
         <div className="page-title">Your Orders</div>
+        {location.state?.notice && (
+          <div style={{ marginBottom: '16px', background: '#e8f5e9', color: '#2e7d32', padding: '12px 14px', borderRadius: '8px' }}>
+            {location.state.notice}
+          </div>
+        )}
+
+        {historyLoading && <LoadingSpinner label="Loading your order history..." />}
+
+        {(bookingHistory?.length || 0) > 0 && (
+          <div style={{ marginBottom: '20px', background: '#fff', border: '1px solid #e5e5e5', borderRadius: '10px', padding: '14px' }}>
+            <h3 style={{ marginTop: 0 }}>Room/Hall Booking History</h3>
+            {bookingHistory.map((b) => (
+              <div key={b.id} style={{ padding: '10px 0', borderTop: '1px solid #f0f0f0' }}>
+                <strong>{b.roomName || b.bookingType || 'Booking'}</strong> | ID: {b.id}<br />
+                Status: {b.status || 'pending'} | Payment: {b.paymentStatus || 'pending'} | Total: KES {Number(b.totalPrice || b.total || 0).toLocaleString()}<br />
+                {b.checkIn ? <>Check-in: {new Date(b.checkIn).toLocaleDateString()} | </> : null}
+                {b.checkOut ? <>Check-out: {new Date(b.checkOut).toLocaleDateString()}</> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(orderHistory?.length || 0) > 0 && (
+          <div style={{ marginBottom: '20px', background: '#fff', border: '1px solid #e5e5e5', borderRadius: '10px', padding: '14px' }}>
+            <h3 style={{ marginTop: 0 }}>Food Order History</h3>
+            {orderHistory.map((o) => (
+              <div key={o.id} style={{ padding: '10px 0', borderTop: '1px solid #f0f0f0' }}>
+                <strong>Order #{o.id}</strong> | Status: {o.status || 'pending'} | Payment: {o.payment_status || o.paymentStatus || 'pending'}<br />
+                Total: KES {Number(o.total_amount || o.totalAmount || 0).toLocaleString()} | Date: {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
+              </div>
+            ))}
+          </div>
+        )}
 
         {orders.map((order) => (
           <div key={order.id} className="order-container">

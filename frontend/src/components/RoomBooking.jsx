@@ -210,7 +210,7 @@ const RoomBooking = () => {
       await createRoomBooking(booking, 'pending', null);
       setSuccessMessage('Room reserved successfully. Request sent to admin for approval. Payment is pending.');
       setTimeout(() => setSuccessMessage(''), 3500);
-      navigate('/orders');
+      navigate('/orders', { state: { notice: 'Your room reservation request was sent successfully and is waiting for admin approval.' } });
     } catch (error) {
       alert(`Failed to reserve room: ${error.message}`);
     } finally {

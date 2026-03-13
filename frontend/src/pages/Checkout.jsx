@@ -107,30 +107,30 @@ const Checkout = () => {
 
     // Pay after: create food order + create booking reservations with pending payment
     setIsProcessing(true);
-    const orderData = {
-      customerName: customerInfo.name,
-      customerEmail: customerInfo.email,
-      customerPhone: customerInfo.phone,
-      deliveryAddress: {
-        fullName: customerInfo.name,
-        phone: customerInfo.phone,
-        county: customerInfo.county,
-        town: customerInfo.town,
-        street: customerInfo.street,
-        building: customerInfo.building || null,
-        instructions: customerInfo.specialRequests || null
-      },
-      specialRequests: customerInfo.specialRequests,
-      paymentMethod: 'after'
-    };
-    
-    let order = null;
-    if (foodCount > 0) {
-      order = await placeMenuOrder(orderData);
-    }
+    try {
+      const orderData = {
+        customerName: customerInfo.name,
+        customerEmail: customerInfo.email,
+        customerPhone: customerInfo.phone,
+        deliveryAddress: {
+          fullName: customerInfo.name,
+          phone: customerInfo.phone,
+          county: customerInfo.county,
+          town: customerInfo.town,
+          street: customerInfo.street,
+          building: customerInfo.building || null,
+          instructions: customerInfo.specialRequests || null
+        },
+        specialRequests: customerInfo.specialRequests,
+        paymentMethod: 'after'
+      };
 
-    for (const item of bookingItems) {
-      try {
+      let order = null;
+      if (foodCount > 0) {
+        order = await placeMenuOrder(orderData);
+      }
+
+      for (const item of bookingItems) {
         await addBooking(item, {
           name: customerInfo.name,
           email: customerInfo.email,
@@ -139,47 +139,48 @@ const Checkout = () => {
           payNow: false,
           paymentData: null
         });
-      } catch (err) {
-        console.error('Failed to reserve booking:', err);
+        removeFromCart(item.id);
       }
-      removeFromCart(item.id);
-    }
 
-    const reservationMsg = bookingItems.length > 0
-      ? `\n${bookingItems.length} booking reservation(s) sent to admin for approval.`
-      : '';
-    alert(`Order placed successfully! ${order ? `Order ID: ${order.id}.` : ''}${reservationMsg}`);
-    navigate('/orders');
-    setIsProcessing(false);
+      const reservationMsg = bookingItems.length > 0
+        ? `\n${bookingItems.length} booking reservation(s) sent to admin for approval.`
+        : '';
+      alert(`Order placed successfully! ${order ? `Order ID: ${order.id}.` : ''}${reservationMsg}`);
+      navigate('/orders', { state: { notice: bookingItems.length > 0 ? 'Your reservation request was sent successfully and is waiting for admin approval.' : '' } });
+    } catch (err) {
+      alert(`Failed to place order: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handlePaymentSuccess = async (paymentData) => {
       setIsProcessing(true);
-    // place menu order with payment
-    const orderData = {
-      customerName: customerInfo.name,
-      customerEmail: customerInfo.email,
-      customerPhone: customerInfo.phone,
-      deliveryAddress: {
-        fullName: customerInfo.name,
-        phone: customerInfo.phone,
-        county: customerInfo.county,
-        town: customerInfo.town,
-        street: customerInfo.street,
-        building: customerInfo.building || null,
-        instructions: customerInfo.specialRequests || null
-      },
-      specialRequests: customerInfo.specialRequests,
-      paymentMethod: 'before',
-      paymentData
-    };
-    
-    const order = await placeMenuOrder(orderData);
+    try {
+      // place menu order with payment
+      const orderData = {
+        customerName: customerInfo.name,
+        customerEmail: customerInfo.email,
+        customerPhone: customerInfo.phone,
+        deliveryAddress: {
+          fullName: customerInfo.name,
+          phone: customerInfo.phone,
+          county: customerInfo.county,
+          town: customerInfo.town,
+          street: customerInfo.street,
+          building: customerInfo.building || null,
+          instructions: customerInfo.specialRequests || null
+        },
+        specialRequests: customerInfo.specialRequests,
+        paymentMethod: 'before',
+        paymentData
+      };
 
-    // process bookings (rooms/halls)
-    const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
-    for (const item of bookingItems) {
-      try {
+      const order = await placeMenuOrder(orderData);
+
+      // process bookings (rooms/halls)
+      const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
+      for (const item of bookingItems) {
         await addBooking(item, {
           name: customerInfo.name,
           email: customerInfo.email,
@@ -189,16 +190,17 @@ const Checkout = () => {
           payNow: true,
           paymentData
         });
-      } catch (err) {
-        console.error('Failed to sync booking to backend:', err);
+        removeFromCart(item.id);
       }
-      removeFromCart(item.id);
-    }
 
-    setIsPaymentOpen(false);
-    alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}\nWe've sent a confirmation email to ${customerInfo.email}`);
-    navigate('/orders');
+      setIsPaymentOpen(false);
+      alert(`Order placed successfully! ${order ? `Order ID: ${order.id}` : ''}\nWe've sent a confirmation email to ${customerInfo.email}`);
+      navigate('/orders', { state: { notice: bookingItems.length > 0 ? 'Your booking request was sent successfully and is waiting for admin approval.' : '' } });
+    } catch (err) {
+      alert(`Failed to place paid order: ${err.message || 'Please try again.'}`);
+    } finally {
       setIsProcessing(false);
+    }
   };
 
   const today = new Date();

@@ -171,6 +171,7 @@ export const UserProvider = ({ children }) => {
       const { accessToken: at, user: u } = data;
       if (at) {
         localStorage.setItem('accessToken', at);
+        localStorage.setItem('__megapark_jwt__', at);
         setAccessToken(at);
       }
       setUser(u);
@@ -203,6 +204,7 @@ export const UserProvider = ({ children }) => {
       const { accessToken: at, user: u } = data;
       if (at) {
         localStorage.setItem('accessToken', at);
+        localStorage.setItem('__megapark_jwt__', at);
         setAccessToken(at);
       }
       setUser(u);
@@ -221,6 +223,8 @@ export const UserProvider = ({ children }) => {
     setSavedPaymentMethods([]);
     setAccessToken(null);
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('__megapark_jwt__');
+    localStorage.removeItem('__megapark_refresh__');
     localStorage.removeItem('currentUser');
     setOrderHistory([]);
     setBookingHistory([]);
