@@ -36,7 +36,7 @@ module.exports = ({ logger, pgClient }) => {
     const alterColumns = [
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS name text`,
-      `ALTER TABLE users ADD COLUMN IF NOT EXISTS role text DEFAULT 'customer'`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS role text DEFAULT 'user'`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now()`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()`,
@@ -44,6 +44,11 @@ module.exports = ({ logger, pgClient }) => {
     for (const sql of alterColumns) {
       await pgClient.query(sql);
     }
+    // Drop any restrictive role CHECK constraint and add one that includes 'user' and 'customer'
+    try {
+      await pgClient.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
+      await pgClient.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'staff', 'user', 'customer'))`);
+    } catch (_) { /* ignore if constraint ops fail on this DB */ }
   };
 
   // Helper to find user by email. If `pgClient` is provided, query the database,
@@ -200,7 +205,7 @@ module.exports = ({ logger, pgClient }) => {
           
           await pgClient.query(
             'INSERT INTO users(id, email, password_hash, name, phone, role, is_active, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
-            [id, lowerEmail, passwordHash, fullName, phone || null, 'customer', true, new Date()]
+            [id, lowerEmail, passwordHash, fullName, phone || null, 'user', true, new Date()]
           );
 
           // Send welcome email
@@ -216,7 +221,7 @@ module.exports = ({ logger, pgClient }) => {
           return res.status(201).json({ 
             ok: true, 
             message: 'Account created successfully. A welcome email has been sent.',
-            user: { id, email: lowerEmail, name: fullName, phone: phone || null, role: 'customer', createdAt: new Date().toISOString() } 
+            user: { id, email: lowerEmail, name: fullName, phone: phone || null, role: 'user', createdAt: new Date().toISOString() } 
           });
         } catch (dbErr) {
           logger.error('Database error during registration:', dbErr.message);
@@ -251,7 +256,7 @@ module.exports = ({ logger, pgClient }) => {
         passwordHash, 
         name: fullName, 
         phone: phone || null, 
-        role: 'customer', 
+        role: 'user', 
         createdAt: new Date().toISOString() 
       };
       users.push(newUser);
@@ -270,7 +275,7 @@ module.exports = ({ logger, pgClient }) => {
       return res.status(201).json({ 
         ok: true,
         message: 'Account created successfully. A welcome email has been sent.',
-        user: { id: newUser.id, email: newUser.email, name: newUser.name, phone: newUser.phone || null, role: 'customer', createdAt: newUser.createdAt || null } 
+        user: { id: newUser.id, email: newUser.email, name: newUser.name, phone: newUser.phone || null, role: 'user', createdAt: newUser.createdAt || null } 
       });
     } catch (e) {
       logger.error('Register error', e.message || e.toString());
