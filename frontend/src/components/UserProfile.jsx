@@ -171,6 +171,11 @@ const UserProfile = () => {
   const [addressForm, setAddressForm] = useState({ fullName: '', phone: '', street: '', city: '', state: '', zipCode: '' });
   const [paymentForm, setPaymentForm] = useState({ type: 'mpesa', phoneNumber: '' });
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   if (!user) {
     return (
       <div className="profile-container">
@@ -353,6 +358,10 @@ const UserProfile = () => {
               </div>
               <button type="submit" className="btn btn-primary">Change Password</button>
             </form>
+
+            <div className="profile-logout-actions">
+              <button className="btn btn-logout" onClick={handleLogout}>Logout</button>
+            </div>
           </div>
         )}
 
@@ -364,6 +373,9 @@ const UserProfile = () => {
               <button className="btn btn-small" onClick={() => fetchOrderHistory()}>Refresh</button>
             </div>
             <FoodOrdersTab orders={orderHistory} loading={historyLoading} onRefresh={fetchOrderHistory} />
+            <div className="profile-logout-actions">
+              <button className="btn btn-logout" onClick={handleLogout}>Logout</button>
+            </div>
           </div>
         )}
 
@@ -375,6 +387,9 @@ const UserProfile = () => {
               <button className="btn btn-small" onClick={() => fetchBookingHistory()}>Refresh</button>
             </div>
             <BookingHistoryTab bookings={bookingHistory} loading={historyLoading} onRefresh={fetchBookingHistory} />
+            <div className="profile-logout-actions">
+              <button className="btn btn-logout" onClick={handleLogout}>Logout</button>
+            </div>
           </div>
         )}
 
@@ -471,6 +486,10 @@ const UserProfile = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="profile-logout-actions">
+                <button className="btn btn-logout" onClick={handleLogout}>Logout</button>
               </div>
             </div>
           </>
