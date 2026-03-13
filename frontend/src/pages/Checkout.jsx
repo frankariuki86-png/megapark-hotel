@@ -9,7 +9,7 @@ import '../styles/checkout.css';
 const Checkout = () => {
   const navigate = useNavigate();
   const { cart, updateCartItem, removeFromCart, getCartTotalForType, getCartCountForType, placeMenuOrder, addBooking } = useCart();
-  const { user, setIsAuthModalOpen } = useUser();
+  const { user, savedAddresses, setIsAuthModalOpen } = useUser();
   const [selectedDelivery, setSelectedDelivery] = useState({});
   const [quantities, setQuantities] = useState({});
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -30,14 +30,19 @@ const Checkout = () => {
 
   React.useEffect(() => {
     if (user) {
+      const defaultAddress = (savedAddresses || []).find(a => a.isDefault) || (savedAddresses || [])[0] || null;
       setCustomerInfo(prev => ({
         ...prev,
         name: user.name || prev.name,
         email: user.email || prev.email,
-        phone: user.phone || prev.phone
+        phone: user.phone || prev.phone,
+        county: (defaultAddress && defaultAddress.state) ? defaultAddress.state : prev.county,
+        town: (defaultAddress && defaultAddress.city) ? defaultAddress.city : prev.town,
+        street: (defaultAddress && defaultAddress.street) ? defaultAddress.street : prev.street,
+        building: (defaultAddress && defaultAddress.zipCode) ? defaultAddress.zipCode : prev.building
       }));
     }
-  }, [user]);
+  }, [user, savedAddresses]);
 
   // Initialize quantities on component mount or when cart changes
   React.useEffect(() => {

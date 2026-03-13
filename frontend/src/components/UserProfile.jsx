@@ -157,6 +157,7 @@ const UserProfile = () => {
     user, logout,
     orderHistory, bookingHistory, historyLoading,
     fetchOrderHistory, fetchBookingHistory,
+    updateProfile, changePassword,
     savedAddresses, addAddress, deleteAddress, setDefaultAddress,
     savedPaymentMethods, addPaymentMethod, deletePaymentMethod, setDefaultPaymentMethod
   } = useUser();
@@ -164,6 +165,9 @@ const UserProfile = () => {
   const [activeTab, setActiveTab] = useState('info');
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: user?.name || '', phone: user?.phone || '' });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [profileMsg, setProfileMsg] = useState('');
   const [addressForm, setAddressForm] = useState({ fullName: '', phone: '', street: '', city: '', state: '', zipCode: '' });
   const [paymentForm, setPaymentForm] = useState({ type: 'mpesa', phoneNumber: '' });
 
@@ -193,6 +197,31 @@ const UserProfile = () => {
     if (paymentForm.phoneNumber) addPaymentMethod(paymentForm);
     setPaymentForm({ type: 'mpesa', phoneNumber: '' });
     setShowPaymentForm(false);
+  };
+
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    const res = await updateProfile({ name: profileForm.name, phone: profileForm.phone });
+    if (!res.ok) {
+      setProfileMsg(res.error || 'Failed to update profile');
+      return;
+    }
+    setProfileMsg('Profile updated successfully.');
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setProfileMsg('New password and confirm password do not match.');
+      return;
+    }
+    const res = await changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+    if (!res.ok) {
+      setProfileMsg(res.error || 'Failed to change password');
+      return;
+    }
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setProfileMsg('Password changed successfully.');
   };
 
   const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
@@ -241,6 +270,7 @@ const UserProfile = () => {
         {activeTab === 'info' && (
           <div className="profile-section">
             <h2>Personal Information</h2>
+            {profileMsg && <p style={{color:'#0b7546', fontWeight:600}}>{profileMsg}</p>}
             <div className="user-info">
               <div className="info-item">
                 <label>Full Name</label>
@@ -265,6 +295,64 @@ const UserProfile = () => {
                 </div>
               )}
             </div>
+
+            <form onSubmit={handleProfileSave} className="address-form" style={{marginTop:'18px'}}>
+              <h3 style={{marginTop:0}}>Update Profile</h3>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Full Name</label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={e => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Phone</label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={e => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn btn-primary">Save Profile</button>
+            </form>
+
+            <form onSubmit={handleChangePassword} className="payment-form" style={{marginTop:'14px'}}>
+              <h3 style={{marginTop:0}}>Change Password</h3>
+              <div className="form-group">
+                <label>Current Password</label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={e => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={e => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={e => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn btn-primary">Change Password</button>
+            </form>
           </div>
         )}
 

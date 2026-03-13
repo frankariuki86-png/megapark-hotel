@@ -26,15 +26,70 @@ export const useUser = () => {
 };
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem('currentUser');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [accessToken, setAccessToken] = useState(() => localStorage.getItem('accessToken') || null);
-  const [savedAddresses, setSavedAddresses] = useState([]);
-  const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
+  const [savedAddresses, setSavedAddresses] = useState(() => {
+    try {
+      const raw = localStorage.getItem('savedAddresses');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState(() => {
+    try {
+      const raw = localStorage.getItem('savedPaymentMethods');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [orderHistory, setOrderHistory] = useState([]);
   const [bookingHistory, setBookingHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('currentUser', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('currentUser');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+  }, [savedAddresses]);
+
+  useEffect(() => {
+    localStorage.setItem('savedPaymentMethods', JSON.stringify(savedPaymentMethods));
+  }, [savedPaymentMethods]);
+
+  useEffect(() => {
+    const token = accessToken;
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.user) setUser(data.user);
+        }
+      } catch (e) {
+        console.warn('[UserContext] session restore failed:', e.message);
+      }
+    })();
+  }, [accessToken]);
 
   const fetchOrderHistory = useCallback(async (token) => {
     const tok = token || accessToken;
@@ -183,6 +238,7 @@ export const UserProvider = ({ children }) => {
     setSavedPaymentMethods([]);
     setAccessToken(null);
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('currentUser');
     setOrderHistory([]);
     setBookingHistory([]);
   }, []);
@@ -207,6 +263,45 @@ export const UserProvider = ({ children }) => {
     setSavedAddresses(prev => [...prev, newAddress]);
     return newAddress;
   }, [savedAddresses.length]);
+
+  const updateProfile = useCallback(async (profileData) => {
+    if (!accessToken) return { ok: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify(profileData)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || 'Failed to update profile' };
+      if (data.user) setUser(data.user);
+      return { ok: true, user: data.user };
+    } catch (e) {
+      return { ok: false, error: e.message || 'Failed to update profile' };
+    }
+  }, [accessToken]);
+
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    if (!accessToken) return { ok: false, error: 'Not authenticated' };
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || 'Failed to change password' };
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || 'Failed to change password' };
+    }
+  }, [accessToken]);
 
   const updateAddress = useCallback((addressId, updatedAddress) => {
     setSavedAddresses(prev =>
@@ -270,6 +365,8 @@ export const UserProvider = ({ children }) => {
     historyLoading,
     fetchOrderHistory,
     fetchBookingHistory,
+    updateProfile,
+    changePassword,
     savedAddresses,
     addAddress,
     updateAddress,

@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const { LoginSchema, RegisterSchema } = require('../validators/schemas');
-const { generateTokenPair, refreshAccessToken } = require('../middleware/authenticate');
+const { authenticate, generateTokenPair, refreshAccessToken } = require('../middleware/authenticate');
 const { sendWelcomeEmail } = require('../services/emailService');
 const { verifyGoogleToken, findOrCreateGoogleUser, sendGoogleWelcomeEmail } = require('../services/googleAuthService');
 
@@ -23,7 +23,7 @@ module.exports = ({ logger, pgClient }) => {
     if (pgClient) {
       try {
         // Wrap query in timeout to prevent hanging on bad connections
-        const queryPromise = pgClient.query('SELECT id, email, password_hash AS "passwordHash", name, role FROM users WHERE email = $1 LIMIT 1', [lowerEmail]);
+        const queryPromise = pgClient.query('SELECT id, email, password_hash AS "passwordHash", name, phone, role, created_at AS "createdAt" FROM users WHERE email = $1 LIMIT 1', [lowerEmail]);
         let timeoutHandle;
         const timeoutPromise = new Promise((_, reject) => {
           timeoutHandle = setTimeout(() => reject(new Error('Database query timeout')), 3000);
@@ -57,6 +57,8 @@ module.exports = ({ logger, pgClient }) => {
           passwordHash: u.passwordHash || u.password_hash || null,
           password: u.password || undefined,
           name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          phone: u.phone || null,
+          createdAt: u.createdAt || u.created_at || null,
           role: u.role || 'customer'
         };
       }
@@ -79,6 +81,8 @@ module.exports = ({ logger, pgClient }) => {
           passwordHash: a.passwordHash || a.password_hash || null,
           password: a.password || undefined,
           name: a.name || '',
+          phone: a.phone || null,
+          createdAt: a.createdAt || a.created_at || null,
           role: a.role || 'admin'
         };
       }
@@ -119,7 +123,14 @@ module.exports = ({ logger, pgClient }) => {
       return res.json({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        user: { id: user.id, email: user.email, name: user.name, role: user.role }
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          phone: user.phone || null,
+          role: user.role,
+          createdAt: user.createdAt || null
+        }
       });
     } catch (e) {
       if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
@@ -173,7 +184,7 @@ module.exports = ({ logger, pgClient }) => {
           return res.status(201).json({ 
             ok: true, 
             message: 'Account created successfully. A welcome email has been sent.',
-            user: { id, email: lowerEmail, name: fullName } 
+            user: { id, email: lowerEmail, name: fullName, phone: phone || null, role: 'customer', createdAt: new Date().toISOString() } 
           });
         } catch (dbErr) {
           logger.error('Database error during registration:', dbErr.message);
@@ -221,7 +232,7 @@ module.exports = ({ logger, pgClient }) => {
       return res.status(201).json({ 
         ok: true,
         message: 'Account created successfully. A welcome email has been sent.',
-        user: { id: newUser.id, email: newUser.email, name: newUser.name } 
+        user: { id: newUser.id, email: newUser.email, name: newUser.name, phone: newUser.phone || null, role: 'customer', createdAt: newUser.createdAt || null } 
       });
     } catch (e) {
       logger.error('Register error', e.message || e.toString());
@@ -291,13 +302,144 @@ module.exports = ({ logger, pgClient }) => {
           id: user.id,
           email: user.email,
           name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          phone: user.phone || null,
           role: user.role || 'customer',
+          createdAt: user.created_at || user.createdAt || null,
           picture: googleData.picture
         }
       });
     } catch (err) {
       logger.error('Google authentication failed', err.message || err.toString());
       return res.status(401).json({ error: err.message || 'Google authentication failed' });
+    }
+  });
+
+  // Get authenticated user's profile
+  router.get('/me', authenticate, async (req, res) => {
+    try {
+      const email = req.user?.email;
+      if (!email) return res.status(401).json({ error: 'Unauthorized' });
+
+      const user = await findUserByEmail(email);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      return res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name || '',
+          phone: user.phone || null,
+          role: user.role || 'customer',
+          createdAt: user.createdAt || null
+        }
+      });
+    } catch (e) {
+      logger.error('Get /auth/me error', e.message || e.toString());
+      return res.status(500).json({ error: 'server_error' });
+    }
+  });
+
+  // Update authenticated user's profile data
+  router.put('/profile', authenticate, async (req, res) => {
+    try {
+      const email = req.user?.email;
+      if (!email) return res.status(401).json({ error: 'Unauthorized' });
+
+      const name = req.body?.name;
+      const phone = req.body?.phone;
+      if (!name && !phone) return res.status(400).json({ error: 'At least one field required' });
+
+      if (pgClient) {
+        const { rows } = await pgClient.query(
+          'UPDATE users SET name = COALESCE($1, name), phone = COALESCE($2, phone), updated_at = now() WHERE LOWER(email) = $3 RETURNING id, email, name, phone, role, created_at AS "createdAt"',
+          [name || null, phone || null, String(email).toLowerCase()]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        return res.json({ user: rows[0] });
+      }
+
+      const usersPath = path.join(__dirname, '..', 'data', 'users.json');
+      let users = [];
+      try {
+        users = JSON.parse(fs.readFileSync(usersPath, 'utf8') || '[]');
+      } catch {
+        users = [];
+      }
+      const idx = users.findIndex(u => String(u.email).toLowerCase() === String(email).toLowerCase());
+      if (idx === -1) return res.status(404).json({ error: 'User not found' });
+
+      users[idx] = {
+        ...users[idx],
+        ...(name ? { name } : {}),
+        ...(phone ? { phone } : {}),
+        updatedAt: new Date().toISOString()
+      };
+      fs.writeFileSync(usersPath, JSON.stringify(users, null, 2));
+
+      return res.json({
+        user: {
+          id: users[idx].id,
+          email: users[idx].email,
+          name: users[idx].name,
+          phone: users[idx].phone || null,
+          role: users[idx].role || 'customer',
+          createdAt: users[idx].createdAt || null
+        }
+      });
+    } catch (e) {
+      logger.error('PUT /auth/profile error', e.message || e.toString());
+      return res.status(500).json({ error: 'server_error' });
+    }
+  });
+
+  // Change authenticated user's password
+  router.put('/change-password', authenticate, async (req, res) => {
+    try {
+      const email = req.user?.email;
+      if (!email) return res.status(401).json({ error: 'Unauthorized' });
+
+      const currentPassword = req.body?.currentPassword;
+      const newPassword = req.body?.newPassword;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+      }
+      if (String(newPassword).length < 8) {
+        return res.status(400).json({ error: 'New password must be at least 8 characters' });
+      }
+
+      const user = await findUserByEmail(email);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (!user.passwordHash) return res.status(400).json({ error: 'Password change not available for this account type' });
+
+      const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!matches) return res.status(401).json({ error: 'Current password is incorrect' });
+
+      const newHash = await bcrypt.hash(newPassword, 10);
+
+      if (pgClient) {
+        await pgClient.query(
+          'UPDATE users SET password_hash = $1, updated_at = now() WHERE LOWER(email) = $2',
+          [newHash, String(email).toLowerCase()]
+        );
+        return res.json({ ok: true, message: 'Password changed successfully' });
+      }
+
+      const usersPath = path.join(__dirname, '..', 'data', 'users.json');
+      let users = [];
+      try {
+        users = JSON.parse(fs.readFileSync(usersPath, 'utf8') || '[]');
+      } catch {
+        users = [];
+      }
+      const idx = users.findIndex(u => String(u.email).toLowerCase() === String(email).toLowerCase());
+      if (idx === -1) return res.status(404).json({ error: 'User not found' });
+
+      users[idx] = { ...users[idx], passwordHash: newHash, updatedAt: new Date().toISOString() };
+      fs.writeFileSync(usersPath, JSON.stringify(users, null, 2));
+      return res.json({ ok: true, message: 'Password changed successfully' });
+    } catch (e) {
+      logger.error('PUT /auth/change-password error', e.message || e.toString());
+      return res.status(500).json({ error: 'server_error' });
     }
   });
 
