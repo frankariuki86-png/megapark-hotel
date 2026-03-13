@@ -68,10 +68,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       ['guest_name', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_name text`],
       ['booking_type', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type text DEFAULT 'room'`],
       ['booking_data', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_data jsonb DEFAULT '{}'::jsonb`],
+      ['room_name', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS room_name text`],
       ['room_id', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS room_id text`],
       ['hall_id', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hall_id text`],
       ['check_in', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS check_in timestamptz`],
       ['check_out', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS check_out timestamptz`],
+      ['nights', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS nights integer DEFAULT 1`],
+      ['guests', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guests integer DEFAULT 1`],
+      ['guest_count', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_count integer DEFAULT 1`],
       ['total', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total numeric DEFAULT 0`],
       ['status', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`],
       ['payment_status', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending'`],
@@ -151,9 +155,12 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
 
     const bookingData = payload.bookingData || {};
     const roomId = bookingData.roomId || bookingData.room_id || null;
+    const roomName = bookingData.roomName || bookingData.room_name || null;
     const hallId = bookingData.hallId || bookingData.hall_id || null;
     const checkInRaw = bookingData.checkIn || bookingData.check_in || null;
     const checkOutRaw = bookingData.checkOut || bookingData.check_out || null;
+    const nights = Math.max(1, Number(bookingData.nights || 1));
+    const guests = Math.max(1, Number(bookingData.guests || bookingData.guestCount || 1));
 
     if (payload.bookingType === 'room' && columns.has('room_id') && !roomId) {
       throw new Error('Room ID is required for room booking');
@@ -182,10 +189,14 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       customerPhone: payload.customerPhone || null,
       ...bookingData
     }));
+    addValue('room_name', roomName);
     addValue('room_id', roomId);
     addValue('hall_id', hallId);
     addValue('check_in', checkInRaw ? new Date(checkInRaw) : null);
     addValue('check_out', checkOutRaw ? new Date(checkOutRaw) : null);
+    addValue('nights', nights);
+    addValue('guests', guests);
+    addValue('guest_count', guests);
     addValue('total', payload.total);
     addValue('total_price', payload.total);
     addValue('payment_status', payload.paymentStatus);
