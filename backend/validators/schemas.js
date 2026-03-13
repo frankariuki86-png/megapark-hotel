@@ -137,8 +137,9 @@ const BookingCreateSchema = z.object({
   bookingData: z.object({
     roomId: z.string().optional(),
     hallId: z.string().optional(), 
-    checkIn: z.string().datetime().optional(),
-    checkOut: z.string().datetime().optional(),
+    // Accept both ISO datetime and YYYY-MM-DD date strings from different booking flows.
+    checkIn: z.string().min(1).optional(),
+    checkOut: z.string().min(1).optional(),
     guests: z.number().int().min(1).optional(),
     specialRequests: z.string().optional()
   }).optional(),

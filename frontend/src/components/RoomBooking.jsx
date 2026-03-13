@@ -48,6 +48,7 @@ const RoomBooking = () => {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [pendingBooking, setPendingBooking] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [submittingBookingId, setSubmittingBookingId] = useState(null);
 
   // Fallback rooms for when API is unavailable
   const fallbackRooms = [
@@ -122,26 +123,26 @@ const RoomBooking = () => {
 
   const nights = calculateNights();
 
-  const handleBookRoom = (room) => {
+  const buildBooking = (room) => {
     if (!user) {
       alert('Please login to proceed with booking');
       setIsAuthModalOpen(true);
-      return;
+      return null;
     }
 
     if (!checkInDate || !checkOutDate) {
       alert('Please select check-in and check-out dates');
-      return;
+      return null;
     }
 
     if (guests > room.capacity) {
       alert(`This room can accommodate maximum ${room.capacity} guests`);
-      return;
+      return null;
     }
 
     const totalPrice = room.price * nights;
 
-    const booking = {
+    return {
       id: `${room.id}-${Date.now()}`,
       type: 'room',
       name: room.name,
@@ -153,6 +154,73 @@ const RoomBooking = () => {
       guests,
       room
     };
+  };
+
+  const createRoomBooking = async (booking, paymentStatus = 'pending', paymentData = null) => {
+    const API_BASE_URL = getApiBaseUrl();
+    const bookingPayload = {
+      customerName: user?.name || 'Guest User',
+      customerEmail: user?.email || '',
+      customerPhone: user?.phone || '',
+      bookingType: 'room',
+      bookingData: {
+        roomId: booking.room?.id || booking.id,
+        checkIn: booking.checkInDate,
+        checkOut: booking.checkOutDate,
+        guests: booking.guests || 1,
+        nights: booking.nights || 1,
+        roomName: booking.name || booking.room?.name || '',
+        roomPrice: booking.roomPrice || 0,
+        specialRequests: ''
+      },
+      total: booking.price || 0,
+      paymentStatus,
+      paymentData,
+      status: 'pending'
+    };
+
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bookingPayload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const details = Array.isArray(errorData.details)
+        ? errorData.details.map(d => d.message || d).filter(Boolean).join(', ')
+        : '';
+      throw new Error(details || errorData.error || `Failed to create booking (${response.status})`);
+    }
+
+    const createdBooking = await response.json();
+    try {
+      window.dispatchEvent(new CustomEvent('new-booking', { detail: createdBooking }));
+    } catch (e) {
+      console.warn('[RoomBooking] unable to dispatch new-booking event', e);
+    }
+    return createdBooking;
+  };
+
+  const handleReserveNowPayLater = async (room) => {
+    const booking = buildBooking(room);
+    if (!booking) return;
+    try {
+      setSubmittingBookingId(room.id);
+      await createRoomBooking(booking, 'pending', null);
+      setSuccessMessage('Room reserved successfully. Request sent to admin for approval. Payment is pending.');
+      setTimeout(() => setSuccessMessage(''), 3500);
+      navigate('/orders');
+    } catch (error) {
+      alert(`Failed to reserve room: ${error.message}`);
+    } finally {
+      setSubmittingBookingId(null);
+    }
+  };
+
+  const handlePayNow = (room) => {
+    const booking = buildBooking(room);
+    if (!booking) return;
 
     // redirect to payment page with booking in state
     navigate('/payment', { state: { booking } });
@@ -232,9 +300,14 @@ const RoomBooking = () => {
                     {nights>0 && <span className="total-price">Total: KES {((parseInt(room.price) || 5000) * nights).toLocaleString()}</span>}
                   </div>
 
-                  <button className="btn btn-book" onClick={() => handleBookRoom(room)} disabled={!checkInDate || !checkOutDate || guests > room.capacity}>
-                    {guests > room.capacity ? `Max ${room.capacity} guests` : '🔒 Secure Payment'}
-                  </button>
+                  <div className="room-book-actions" style={{display:'grid', gap:'10px'}}>
+                    <button className="btn btn-book" onClick={() => handleReserveNowPayLater(room)} disabled={!checkInDate || !checkOutDate || guests > room.capacity || submittingBookingId === room.id}>
+                      {guests > room.capacity ? `Max ${room.capacity} guests` : (submittingBookingId === room.id ? 'Reserving...' : 'Reserve Room, Pay Later')}
+                    </button>
+                    <button className="btn btn-book" onClick={() => handlePayNow(room)} disabled={!checkInDate || !checkOutDate || guests > room.capacity || submittingBookingId === room.id}>
+                      {guests > room.capacity ? `Max ${room.capacity} guests` : 'Pay Now'}
+                    </button>
+                  </div>
                 </div>
 
                 <ReviewSection roomId={room.id} roomName={room.name} />

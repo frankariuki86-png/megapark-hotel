@@ -213,6 +213,11 @@ const Checkout = () => {
 
   const cartItems = cart;
   const foodItems = cart.filter(i => i.type === 'food');
+  const bookingItems = cart.filter(i => i.type === 'room' || i.type === 'hall');
+  const hasFoodItems = foodItems.length > 0;
+  const hasBookingItems = bookingItems.length > 0;
+  const payLaterLabel = hasBookingItems && !hasFoodItems ? 'Reserve room now, pay later' : 'Pay on delivery';
+  const payNowLabel = hasBookingItems && !hasFoodItems ? 'Pay now' : 'Pay before delivery';
 
   if (cartItems.length === 0) {
     return (
@@ -421,10 +426,10 @@ const Checkout = () => {
           <div style={{ marginTop: '12px', marginBottom: '8px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Payment Method</label>
             <label style={{ marginRight: '12px' }}>
-              <input type="radio" name="paymentMethod" value="after" checked={paymentMethod === 'after'} onChange={() => setPaymentMethod('after')} /> Reserve now, pay later
+              <input type="radio" name="paymentMethod" value="after" checked={paymentMethod === 'after'} onChange={() => setPaymentMethod('after')} /> {payLaterLabel}
             </label>
             <label>
-              <input type="radio" name="paymentMethod" value="before" checked={paymentMethod === 'before'} onChange={() => setPaymentMethod('before')} /> Pay now
+              <input type="radio" name="paymentMethod" value="before" checked={paymentMethod === 'before'} onChange={() => setPaymentMethod('before')} /> {payNowLabel}
             </label>
           </div>
 

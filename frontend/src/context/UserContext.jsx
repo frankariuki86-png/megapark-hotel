@@ -79,7 +79,11 @@ export const UserProvider = ({ children }) => {
         } catch {
           errorData = {};
         }
-        return { ok: false, error: errorData.error || 'Registration failed' };
+        const details = Array.isArray(errorData.details)
+          ? errorData.details.map(d => d.message || d).filter(Boolean).join(', ')
+          : '';
+        const message = details || errorData.error || 'Registration failed';
+        return { ok: false, error: message };
       }
       const data = await resp.json();
       const u = data.user;

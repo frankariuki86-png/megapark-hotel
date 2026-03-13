@@ -23,6 +23,7 @@ const PaymentPage = () => {
   const booking = location.state?.booking || null;
   const [isOpen, setIsOpen] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMode, setPaymentMode] = useState('now');
 
   if (!booking) {
     return (
@@ -33,7 +34,7 @@ const PaymentPage = () => {
     );
   }
 
-  const handlePaymentSuccess = async (paymentData) => {
+  const saveBooking = async (paymentData, paymentStatus = 'paid') => {
     setIsSubmitting(true);
     try {
       // Prepare booking data for backend
@@ -53,9 +54,9 @@ const PaymentPage = () => {
           specialRequests: ''
         },
         total: booking.price || 0,
-        paymentStatus: 'paid',
+        paymentStatus,
         paymentData: paymentData,
-        status: 'booked'
+        status: 'pending'
       };
 
       console.log('[PaymentPage] Sending booking to backend:', bookingPayload);
@@ -97,13 +98,26 @@ const PaymentPage = () => {
       }
 
       setIsOpen(false);
-      alert('Payment successful! Your booking is confirmed and sent to admin for approval.');
+      alert(paymentStatus === 'paid'
+        ? 'Payment successful! Your booking request has been sent to admin for approval.'
+        : 'Room reserved successfully! Your booking request has been sent to admin for approval. Payment is pending.');
       navigate('/orders');
     } catch (error) {
       console.error('[PaymentPage] Error creating booking:', error);
-      alert(`Payment processed but failed to save booking: ${error.message}. Please contact support.`);
+      const prefix = paymentStatus === 'paid'
+        ? 'Payment processed but failed to save booking'
+        : 'Reservation failed to save booking';
+      alert(`${prefix}: ${error.message}. Please contact support.`);
       setIsSubmitting(false);
     }
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    await saveBooking(paymentData, 'paid');
+  };
+
+  const handleReservePayLater = async () => {
+    await saveBooking(null, 'pending');
   };
 
   return (
@@ -116,16 +130,40 @@ const PaymentPage = () => {
         <div style={{ marginBottom: 12 }}>
           <strong>Amount:</strong> KES {(booking.price || 0).toLocaleString()}
         </div>
+        <div style={{ marginBottom: 16 }}>
+          <strong>Payment Option:</strong>
+          <div style={{ marginTop: 8 }}>
+            <label style={{ marginRight: 16 }}>
+              <input type="radio" name="roomPaymentMode" checked={paymentMode === 'later'} onChange={() => setPaymentMode('later')} /> Reserve Room, Pay Later
+            </label>
+            <label>
+              <input type="radio" name="roomPaymentMode" checked={paymentMode === 'now'} onChange={() => setPaymentMode('now')} /> Pay Now
+            </label>
+          </div>
+        </div>
       </div>
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
-        <PaymentGateway
-          isOpen={isOpen}
-          total={booking.price || 0}
-          onClose={() => setIsOpen(false)}
-          onPaymentSuccess={handlePaymentSuccess}
-          isDisabled={isSubmitting}
-          inline
-        />
+        {paymentMode === 'now' ? (
+          <PaymentGateway
+            isOpen={isOpen}
+            total={booking.price || 0}
+            onClose={() => setIsOpen(false)}
+            onPaymentSuccess={handlePaymentSuccess}
+            isDisabled={isSubmitting}
+            inline
+          />
+        ) : (
+          <div style={{ padding: 16, background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10 }}>
+            <p style={{ marginBottom: 12 }}>Reserve this room now and complete payment later. Admin will review and approve your booking request.</p>
+            <button
+              className="btn btn-primary"
+              onClick={handleReservePayLater}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Reserve Room, Pay Later'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
