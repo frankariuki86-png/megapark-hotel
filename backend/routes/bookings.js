@@ -5,6 +5,41 @@ const { BookingCreateSchema, BookingUpdateSchema } = require('../validators/sche
 const { sendRoomBookingConfirmationEmail, sendHallBookingConfirmationEmail } = require('../services/emailService');
 
 module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
+  const getBookingsColumns = async () => {
+    if (!pgClient) return new Set();
+    try {
+      const { rows } = await pgClient.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'bookings'
+      `);
+      return new Set(rows.map(row => row.column_name));
+    } catch (error) {
+      logger.warn(`Unable to inspect bookings columns: ${error.message}`);
+      return new Set();
+    }
+  };
+
+  const dropBookingCheckConstraints = async () => {
+    if (!pgClient) return;
+    try {
+      const { rows } = await pgClient.query(`
+        SELECT con.conname
+        FROM pg_constraint con
+        INNER JOIN pg_class rel ON rel.oid = con.conrelid
+        INNER JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+        WHERE rel.relname = 'bookings'
+          AND nsp.nspname = 'public'
+          AND con.contype = 'c'
+      `);
+      for (const row of rows) {
+        await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS ${row.conname}`).catch(() => {});
+      }
+    } catch (error) {
+      logger.warn(`Unable to refresh bookings constraints: ${error.message}`);
+    }
+  };
+
   const ensureBookingsTable = async () => {
     if (!pgClient) return;
 
@@ -25,62 +60,132 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       )
     `);
 
+    const existingColumns = await getBookingsColumns();
     const alterColumns = [
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_name text`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_email text`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_phone text`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type text DEFAULT 'room'`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_data jsonb DEFAULT '{}'::jsonb`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total numeric DEFAULT 0`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending'`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_data jsonb`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now()`,
-      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()`
+      ['customer_name', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_name text`],
+      ['customer_email', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_email text`],
+      ['customer_phone', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_phone text`],
+      ['booking_type', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type text DEFAULT 'room'`],
+      ['booking_data', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_data jsonb DEFAULT '{}'::jsonb`],
+      ['total', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total numeric DEFAULT 0`],
+      ['status', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`],
+      ['payment_status', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending'`],
+      ['payment_data', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_data jsonb`],
+      ['created_at', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now()`],
+      ['updated_at', `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()`]
     ];
 
-    for (const sql of alterColumns) {
-      await pgClient.query(sql);
+    for (const [columnName, sql] of alterColumns) {
+      if (!existingColumns.has(columnName)) {
+        await pgClient.query(sql).catch(error => {
+          logger.warn(`Unable to add bookings.${columnName}: ${error.message}`);
+        });
+      }
     }
 
-    await pgClient.query(`
+    const refreshedColumns = await getBookingsColumns();
+
+    if (refreshedColumns.has('booking_type')) {
+      await pgClient.query(`
       UPDATE bookings
       SET booking_type = COALESCE(booking_type, type, 'room')
       WHERE booking_type IS NULL
-    `).catch(() => {});
-    await pgClient.query(`
+      `).catch(() => {});
+    }
+    if (refreshedColumns.has('booking_data')) {
+      await pgClient.query(`
       UPDATE bookings
       SET booking_data = COALESCE(booking_data, payload, '{}'::jsonb)
       WHERE booking_data IS NULL
-    `).catch(() => {});
-    await pgClient.query(`
+      `).catch(() => {});
+    }
+    if (refreshedColumns.has('total')) {
+      await pgClient.query(`
       UPDATE bookings
       SET total = COALESCE(total, total_price, 0)
       WHERE total IS NULL
-    `).catch(() => {});
-    await pgClient.query(`
+      `).catch(() => {});
+    }
+    if (refreshedColumns.has('customer_name')) {
+      await pgClient.query(`
       UPDATE bookings
       SET customer_name = COALESCE(customer_name, payload->>'customerName', payload->>'guestName', 'Guest User')
       WHERE customer_name IS NULL
-    `).catch(() => {});
-    await pgClient.query(`
+      `).catch(() => {});
+    }
+    if (refreshedColumns.has('customer_email')) {
+      await pgClient.query(`
       UPDATE bookings
       SET customer_email = COALESCE(customer_email, payload->>'customerEmail')
       WHERE customer_email IS NULL
-    `).catch(() => {});
-    await pgClient.query(`
+      `).catch(() => {});
+    }
+    if (refreshedColumns.has('customer_phone')) {
+      await pgClient.query(`
       UPDATE bookings
       SET customer_phone = COALESCE(customer_phone, payload->>'customerPhone')
       WHERE customer_phone IS NULL
-    `).catch(() => {});
+      `).catch(() => {});
+    }
 
-    await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`).catch(() => {});
-    await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_payment_status_check`).catch(() => {});
-    await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_booking_type_check`).catch(() => {});
+    await dropBookingCheckConstraints();
 
-    await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'booked', 'confirmed', 'cancelled', 'completed'))`).catch(() => {});
-    await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'))`).catch(() => {});
-    await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_booking_type_check CHECK (booking_type IN ('room', 'hall'))`).catch(() => {});
+    if (refreshedColumns.has('status')) {
+      await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'booked', 'confirmed', 'cancelled', 'completed'))`).catch(() => {});
+    }
+    if (refreshedColumns.has('payment_status')) {
+      await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'))`).catch(() => {});
+    }
+    if (refreshedColumns.has('booking_type')) {
+      await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_booking_type_check CHECK (booking_type IN ('room', 'hall'))`).catch(() => {});
+    }
+  };
+
+  const insertBookingRow = async (id, payload) => {
+    const columns = await getBookingsColumns();
+
+    if (columns.has('customer_name') && columns.has('booking_type') && columns.has('booking_data') && columns.has('total')) {
+      const q = `INSERT INTO bookings (id, customer_name, customer_email, customer_phone, booking_type, booking_data, total, payment_status, payment_data, status)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
+      const values = [
+        id,
+        payload.customerName,
+        payload.customerEmail || null,
+        payload.customerPhone || null,
+        payload.bookingType,
+        JSON.stringify(payload.bookingData || {}),
+        payload.total,
+        payload.paymentStatus,
+        JSON.stringify(payload.paymentData ?? null),
+        payload.status
+      ];
+      const { rows } = await pgClient.query(q, values);
+      return rows[0];
+    }
+
+    if (columns.has('type') && columns.has('payload') && columns.has('total_price')) {
+      const legacyPayload = {
+        customerName: payload.customerName,
+        customerEmail: payload.customerEmail || null,
+        customerPhone: payload.customerPhone || null,
+        ...payload.bookingData
+      };
+      const q = `INSERT INTO bookings (id, type, payload, total_price, status, payment_status)
+                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`;
+      const legacyStatus = payload.status === 'pending' ? 'booked' : payload.status;
+      const values = [
+        id,
+        payload.bookingType,
+        JSON.stringify(legacyPayload),
+        payload.total,
+        legacyStatus,
+        payload.paymentStatus
+      ];
+      const { rows } = await pgClient.query(q, values);
+      return rows[0];
+    }
+
+    throw new Error('Bookings table is missing required columns for insert');
   };
 
   // Helper to normalize booking data from DB (snake_case) to standard camelCase format
@@ -200,24 +305,21 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       const id = `BOOK-${Date.now()}`;
 
       if (pgClient) {
-        const q = `INSERT INTO bookings (id, customer_name, customer_email, customer_phone, booking_type, booking_data, total, payment_status, payment_data, status)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
-        const values = [id, payload.customerName, payload.customerEmail || null, payload.customerPhone || null, payload.bookingType, JSON.stringify(payload.bookingData || {}), payload.total, payload.paymentStatus, JSON.stringify(payload.paymentData ?? null), payload.status];
-        const { rows } = await pgClient.query(q, values);
+        const createdRow = await insertBookingRow(id, payload);
         
         // Send confirmation email
         try {
           if (payload.bookingType === 'room') {
-            await sendRoomBookingConfirmationEmail(payload.customerEmail, { ...rows[0], id });
+            await sendRoomBookingConfirmationEmail(payload.customerEmail, { ...createdRow, id });
           } else {
-            await sendHallBookingConfirmationEmail(payload.customerEmail, { ...rows[0], id });
+            await sendHallBookingConfirmationEmail(payload.customerEmail, { ...createdRow, id });
           }
         } catch (emailErr) {
           logger.warn(`Booking confirmation email failed: ${emailErr.message}`);
         }
 
         // Normalize and return the created booking
-        return res.status(201).json(normalizeDbBooking(rows[0]));
+        return res.status(201).json(normalizeDbBooking(createdRow));
       }
 
       const bookings = readJSON(bookingsPath, []);
@@ -240,8 +342,11 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
 
       return res.status(201).json(created);
     } catch (e) {
-      logger.error('POST /api/bookings error', e.message);
-      res.status(500).json({ error: 'server_error' });
+      logger.error('POST /api/bookings error', e.message, e.stack);
+      res.status(500).json({
+        error: e.message || 'server_error',
+        details: [{ message: e.message || 'Unknown booking error' }]
+      });
     }
   });
 
