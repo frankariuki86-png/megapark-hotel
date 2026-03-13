@@ -161,9 +161,12 @@ const AdminDashboard = () => {
   // Overview Statistics
   const totalBookings = bookings.length;
   const totalOrders = foodOrders.length;
-  const totalRevenue = bookings.reduce((sum, b) => sum + (b.paymentStatus === 'paid' ? Number(b.totalPrice || b.total || 0) : 0), 0) +
+  const paidRevenue = bookings.reduce((sum, b) => sum + (b.paymentStatus === 'paid' ? Number(b.totalPrice || b.total || 0) : 0), 0) +
                        events.reduce((sum, e) => sum + (e.paymentStatus === 'paid' ? Number(e.totalPrice || 0) : 0), 0) +
                        foodOrders.reduce((sum, o) => sum + (o.paymentStatus === 'paid' ? (Number(o.totalAmount || o.total_price || 0)) : 0), 0);
+  const pendingRevenue = bookings.reduce((sum, b) => sum + (b.paymentStatus === 'pending' ? Number(b.totalPrice || b.total || 0) : 0), 0) +
+                         events.reduce((sum, e) => sum + (e.paymentStatus === 'pending' ? Number(e.totalPrice || 0) : 0), 0) +
+                         foodOrders.reduce((sum, o) => sum + (o.paymentStatus === 'pending' ? (Number(o.totalAmount || o.total_price || 0)) : 0), 0);
   const pendingPayments = bookings.filter(b => b.paymentStatus === 'pending').length +
                           events.filter(e => e.paymentStatus === 'pending').length +
                           foodOrders.filter(o => o.paymentStatus === 'pending').length;
@@ -214,12 +217,16 @@ const AdminDashboard = () => {
                 <div className="stat-label">Food Orders</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value">KES {totalRevenue.toLocaleString()}</div>
-                <div className="stat-label">Total Revenue</div>
+                <div className="stat-value">KES {paidRevenue.toLocaleString()}</div>
+                <div className="stat-label">Paid Revenue</div>
               </div>
               <div className="stat-card">
                 <div className="stat-value">{pendingPayments}</div>
                 <div className="stat-label">Pending Payments</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">KES {pendingRevenue.toLocaleString()}</div>
+                <div className="stat-label">Pending Revenue</div>
               </div>
               <div className="stat-card">
                 <div className="stat-value">{events.length}</div>

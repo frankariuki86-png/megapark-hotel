@@ -192,8 +192,11 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart]);
 
-  // Create a booking (room/hall) and attempt backend persistence + payment
-  const addBooking = useCallback(async (booking, customer = {}) => {
+  // Create a booking (room/hall) with pending admin approval.
+  // Supports reserve now + pay later OR pay now.
+  const addBooking = useCallback(async (booking, customer = {}, options = {}) => {
+    const payNow = Boolean(options.payNow);
+    const paymentData = options.paymentData || customer.paymentData || null;
     const orderDate = new Date();
     const localId = `BOOK-${Date.now()}`;
 
@@ -204,10 +207,10 @@ export const CartProvider = ({ children }) => {
       dateTime: orderDate.toISOString(),
       items: [booking],
       total: booking.price || 0,
-      status: 'booked',
-      paymentStatus: 'pending',
-      paymentData: null,
-      tracking: { stage: 1, lastUpdate: orderDate.toISOString(), location: 'Booking pending' }
+      status: 'pending',
+      paymentStatus: payNow ? 'paid' : 'pending',
+      paymentData,
+      tracking: { stage: 1, lastUpdate: orderDate.toISOString(), location: 'Pending admin approval' }
     };
 
     // Optimistically add local booking
@@ -221,8 +224,9 @@ export const CartProvider = ({ children }) => {
       bookingType: booking.type || 'room',
       bookingData: {},
       total: booking.price || booking.total || 0,
-      paymentStatus: 'pending',
-      status: 'booked'
+      paymentStatus: payNow ? 'paid' : 'pending',
+      paymentData,
+      status: 'pending'
     };
     if (payload.bookingType === 'room') {
       payload.bookingData = {
@@ -239,12 +243,6 @@ export const CartProvider = ({ children }) => {
         eventTime: booking.eventTime || '',
         guestCount: booking.guestCount || booking.guests || 0
       };
-    }
-
-    try {
-      // persist booking to backend (below)
-    } catch (e) {
-      // no-op
     }
 
     try {
@@ -267,7 +265,7 @@ export const CartProvider = ({ children }) => {
       }
       
       const created = await createRes.json();
-      const bookingId = created.id || created.id || localId;
+      const bookingId = created.id || localId;
 
       // notify admin context with server-created booking (ensures admin receives persisted data)
       try {
@@ -283,8 +281,8 @@ export const CartProvider = ({ children }) => {
           nights: (created.bookingData && created.bookingData.nights) || booking.nights || 0,
           guests: (created.bookingData && (created.bookingData.guests || created.bookingData.guestCount)) || 0,
           totalPrice: created.total || created.total_price || payload.total || 0,
-          status: created.status || 'booked',
-          paymentStatus: created.paymentStatus || created.payment_status || 'pending',
+          status: created.status || 'pending',
+          paymentStatus: created.paymentStatus || created.payment_status || (payNow ? 'paid' : 'pending'),
           createdAt: created.createdAt || created.created_at || new Date().toISOString()
         };
         window.dispatchEvent(new CustomEvent('new-booking', { detail: eventDetail }));
@@ -292,57 +290,25 @@ export const CartProvider = ({ children }) => {
         // ignore
       }
 
-      // Create payment intent including bookingId metadata
-      const piResp = await fetch(`${API_BASE_URL}/payments/create-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalPrice: booking.price || 0, customerName: customer.name || '', customerEmail: customer.email || '', bookingId })
-      });
-      
-      if (!piResp.ok) {
-        let errorMsg = 'Failed to create payment intent';
-        try {
-          const errorData = await piResp.json();
-          errorMsg = errorData.error || errorMsg;
-        } catch {
-          errorMsg = `Server error: ${piResp.status}`;
-        }
-        throw new Error(errorMsg);
-      }
-      
-      const piData = await piResp.json();
+      setOrders(prev => prev.map(b => (
+        b.id === localId
+          ? {
+            ...b,
+            id: bookingId,
+            status: created.status || 'pending',
+            paymentStatus: created.paymentStatus || created.payment_status || (payNow ? 'paid' : 'pending'),
+            paymentData
+          }
+          : b
+      )));
 
-      // Confirm payment (backend may mock confirm when stripe not configured)
-      const confirmResp = await fetch(`${API_BASE_URL}/payments/confirm-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intentId: piData.intentId, paymentMethodId: 'pm_card_visa' })
-      });
-      
-      if (!confirmResp.ok) {
-        let errorMsg = 'Payment confirmation failed';
-        try {
-          const confirmData = await confirmResp.json();
-          errorMsg = confirmData.error || errorMsg;
-        } catch {
-          errorMsg = `Server error: ${confirmResp.status}`;
-        }
-        throw new Error(errorMsg);
-      }
-      
-      const confirmData = await confirmResp.json();
-      if (confirmData.status !== 'succeeded') throw new Error(confirmData.error || 'Payment failed');
-
-      // Update booking payment status on backend
-      await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_status: 'paid', payment_data: { chargeId: confirmData.chargeId || null, intentId: piData.intentId } })
-      });
-
-      // Update local orders list to mark paid
-      setOrders(prev => prev.map(b => b.id === localId ? { ...b, id: bookingId, paymentStatus: 'paid', paymentData: { intentId: piData.intentId }, status: 'booked' } : b));
-      return { ...localBooking, id: bookingId, paymentStatus: 'paid' };
+      return {
+        ...localBooking,
+        id: bookingId,
+        status: created.status || 'pending',
+        paymentStatus: created.paymentStatus || created.payment_status || (payNow ? 'paid' : 'pending'),
+        paymentData
+      };
     } catch (err) {
       console.error('Booking/payout failed:', err.message || err);
       // leave local booking as pending

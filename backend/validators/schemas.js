@@ -145,11 +145,11 @@ const BookingCreateSchema = z.object({
   total: z.number().min(0),
   paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).default('pending'),
   paymentData: z.record(z.any()).optional(),
-  status: z.enum(['booked', 'confirmed', 'cancelled', 'completed']).default('booked')
+  status: z.enum(['pending', 'booked', 'confirmed', 'cancelled', 'completed']).default('pending')
 }).passthrough();
 
 const BookingUpdateSchema = z.object({
-  status: z.enum(['booked', 'confirmed', 'cancelled', 'completed']).optional(),
+  status: z.enum(['pending', 'booked', 'confirmed', 'cancelled', 'completed']).optional(),
   paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).optional(),
   bookingData: z.record(z.any()).optional()
 }).refine(obj => Object.keys(obj).length > 0, 'At least one field required');

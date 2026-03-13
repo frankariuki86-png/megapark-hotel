@@ -100,14 +100,8 @@ const Checkout = () => {
       return;
     }
 
-    // For bookings, payment after is not allowed here
-    if (bookingItems.length > 0) {
-      alert('Bookings require payment before confirmation. Please choose "Pay before delivery".');
-      return;
-    }
-
-    // pay after delivery (place order directly) for food only
-      setIsProcessing(true);
+    // Pay after: create food order + create booking reservations with pending payment
+    setIsProcessing(true);
     const orderData = {
       customerName: customerInfo.name,
       customerEmail: customerInfo.email,
@@ -125,12 +119,33 @@ const Checkout = () => {
       paymentMethod: 'after'
     };
     
-    const order = await placeMenuOrder(orderData);
-    if (order) {
-      alert(`Order placed successfully! Order ID: ${order.id}. We'll contact you soon.`);
-      navigate('/orders');
+    let order = null;
+    if (foodCount > 0) {
+      order = await placeMenuOrder(orderData);
     }
-      setIsProcessing(false);
+
+    for (const item of bookingItems) {
+      try {
+        await addBooking(item, {
+          name: customerInfo.name,
+          email: customerInfo.email,
+          phone: customerInfo.phone
+        }, {
+          payNow: false,
+          paymentData: null
+        });
+      } catch (err) {
+        console.error('Failed to reserve booking:', err);
+      }
+      removeFromCart(item.id);
+    }
+
+    const reservationMsg = bookingItems.length > 0
+      ? `\n${bookingItems.length} booking reservation(s) sent to admin for approval.`
+      : '';
+    alert(`Order placed successfully! ${order ? `Order ID: ${order.id}.` : ''}${reservationMsg}`);
+    navigate('/orders');
+    setIsProcessing(false);
   };
 
   const handlePaymentSuccess = async (paymentData) => {
@@ -164,6 +179,9 @@ const Checkout = () => {
           name: customerInfo.name,
           email: customerInfo.email,
           phone: customerInfo.phone,
+          paymentData
+        }, {
+          payNow: true,
           paymentData
         });
       } catch (err) {
@@ -403,10 +421,10 @@ const Checkout = () => {
           <div style={{ marginTop: '12px', marginBottom: '8px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Payment Method</label>
             <label style={{ marginRight: '12px' }}>
-              <input type="radio" name="paymentMethod" value="after" checked={paymentMethod === 'after'} onChange={() => setPaymentMethod('after')} /> Pay after delivery
+              <input type="radio" name="paymentMethod" value="after" checked={paymentMethod === 'after'} onChange={() => setPaymentMethod('after')} /> Reserve now, pay later
             </label>
             <label>
-              <input type="radio" name="paymentMethod" value="before" checked={paymentMethod === 'before'} onChange={() => setPaymentMethod('before')} /> Pay before delivery
+              <input type="radio" name="paymentMethod" value="before" checked={paymentMethod === 'before'} onChange={() => setPaymentMethod('before')} /> Pay now
             </label>
           </div>
 

@@ -32,7 +32,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       nights: bookingData.nights || 0,
       guests: bookingData.guests || 0,
       totalPrice: booking.total || booking.totalPrice || 0,
-      status: booking.status || 'booked',
+      status: booking.status || 'pending',
       paymentStatus: booking.payment_status || booking.paymentStatus || 'pending',
       bookingType: booking.booking_type || booking.bookingType || 'room',
       createdAt: booking.created_at || booking.createdAt || '',
