@@ -16,6 +16,23 @@ module.exports = ({ logger, pgClient }) => {
 
   const usersFilePath = path.join(__dirname, '..', 'data', 'users.json');
 
+  const ensureUsersTable = async () => {
+    if (!pgClient) return;
+    await pgClient.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id text PRIMARY KEY,
+        email text UNIQUE NOT NULL,
+        password_hash text NOT NULL,
+        name text,
+        phone text,
+        role text DEFAULT 'customer',
+        is_active boolean DEFAULT true,
+        created_at timestamptz DEFAULT now(),
+        updated_at timestamptz DEFAULT now()
+      )
+    `);
+  };
+
   // Helper to find user by email. If `pgClient` is provided, query the database,
   // otherwise read from `backend/data/users.json` (if present) and fall back to mockUsers.
   const findUserByEmail = async (email) => {
@@ -157,6 +174,7 @@ module.exports = ({ logger, pgClient }) => {
       // If using Postgres
       if (pgClient) {
         try {
+          await ensureUsersTable();
           const exists = await pgClient.query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [lowerEmail]);
           if (exists.rows.length > 0) {
             return res.status(409).json({ error: 'Account already exists' });
@@ -188,6 +206,9 @@ module.exports = ({ logger, pgClient }) => {
           });
         } catch (dbErr) {
           logger.error('Database error during registration:', dbErr.message);
+          if (dbErr.code === '23505') {
+            return res.status(409).json({ error: 'Account already exists' });
+          }
           return res.status(500).json({ error: 'Failed to create account' });
         }
       }
