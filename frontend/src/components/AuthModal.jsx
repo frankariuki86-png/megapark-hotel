@@ -121,26 +121,38 @@ const AuthModal = ({ isOpen, onClose }) => {
             setErrors({ form: res.error });
             return;
           }
+          setSuccessMessage('Login successful!');
+          setTimeout(() => {
+            setSuccessMessage('');
+            onClose();
+          }, 800);
+          setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            firstName: '',
+            lastName: '',
+            phone: ''
+          });
         } else {
           const res = await register(formData.email, formData.password, formData.firstName, formData.lastName, formData.phone);
           if (res && res.ok === false) {
             setErrors({ form: res.error });
             return;
           }
+          setErrors({});
+          setSuccessMessage(res?.message || 'Account created successfully! Please log in.');
+          setIsLoginMode(true);
+          setFormData({
+            email: formData.email,
+            password: '',
+            confirmPassword: '',
+            firstName: '',
+            lastName: '',
+            phone: ''
+          });
+          return;
         }
-        setSuccessMessage(isLoginMode ? 'Login successful!' : 'Account created successfully!');
-        setTimeout(() => {
-          setSuccessMessage('');
-          onClose();
-        }, 800);
-        setFormData({
-          email: '',
-          password: '',
-          confirmPassword: '',
-          firstName: '',
-          lastName: '',
-          phone: ''
-        });
       } catch (err) {
         setErrors({ form: err.message || 'An error occurred' });
       }
@@ -268,6 +280,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                 onClick={() => {
                   setIsLoginMode(!isLoginMode);
                   setErrors({});
+                  setSuccessMessage('');
                   setFormData({
                     email: '',
                     password: '',

@@ -136,16 +136,22 @@ const BookingCreateSchema = z.object({
   bookingType: z.enum(['room', 'hall']).default('room'),
   bookingData: z.object({
     roomId: z.string().optional(),
-    hallId: z.string().optional(), 
+    hallId: z.string().optional(),
+    roomName: z.string().optional(),
+    hallName: z.string().optional(),
     // Accept both ISO datetime and YYYY-MM-DD date strings from different booking flows.
     checkIn: z.string().min(1).optional(),
     checkOut: z.string().min(1).optional(),
+    eventDate: z.string().min(1).optional(),
+    eventTime: z.string().min(1).optional(),
     guests: z.number().int().min(1).optional(),
+    nights: z.number().int().min(1).optional(),
+    roomPrice: z.number().min(0).optional(),
     specialRequests: z.string().optional()
-  }).optional(),
+  }).passthrough().optional(),
   total: z.number().min(0),
   paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).default('pending'),
-  paymentData: z.record(z.any()).optional(),
+  paymentData: z.record(z.any()).nullable().optional(),
   status: z.enum(['pending', 'booked', 'confirmed', 'cancelled', 'completed']).default('pending')
 }).passthrough();
 

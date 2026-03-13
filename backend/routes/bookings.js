@@ -5,12 +5,90 @@ const { BookingCreateSchema, BookingUpdateSchema } = require('../validators/sche
 const { sendRoomBookingConfirmationEmail, sendHallBookingConfirmationEmail } = require('../services/emailService');
 
 module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
+  const ensureBookingsTable = async () => {
+    if (!pgClient) return;
+
+    await pgClient.query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id text PRIMARY KEY,
+        customer_name text,
+        customer_email text,
+        customer_phone text,
+        booking_type text DEFAULT 'room',
+        booking_data jsonb DEFAULT '{}'::jsonb,
+        total numeric DEFAULT 0,
+        status text DEFAULT 'pending',
+        payment_status text DEFAULT 'pending',
+        payment_data jsonb,
+        created_at timestamptz DEFAULT now(),
+        updated_at timestamptz DEFAULT now()
+      )
+    `);
+
+    const alterColumns = [
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_name text`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_email text`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_phone text`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type text DEFAULT 'room'`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_data jsonb DEFAULT '{}'::jsonb`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total numeric DEFAULT 0`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending'`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_data jsonb`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now()`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()`
+    ];
+
+    for (const sql of alterColumns) {
+      await pgClient.query(sql);
+    }
+
+    await pgClient.query(`
+      UPDATE bookings
+      SET booking_type = COALESCE(booking_type, type, 'room')
+      WHERE booking_type IS NULL
+    `).catch(() => {});
+    await pgClient.query(`
+      UPDATE bookings
+      SET booking_data = COALESCE(booking_data, payload, '{}'::jsonb)
+      WHERE booking_data IS NULL
+    `).catch(() => {});
+    await pgClient.query(`
+      UPDATE bookings
+      SET total = COALESCE(total, total_price, 0)
+      WHERE total IS NULL
+    `).catch(() => {});
+    await pgClient.query(`
+      UPDATE bookings
+      SET customer_name = COALESCE(customer_name, payload->>'customerName', payload->>'guestName', 'Guest User')
+      WHERE customer_name IS NULL
+    `).catch(() => {});
+    await pgClient.query(`
+      UPDATE bookings
+      SET customer_email = COALESCE(customer_email, payload->>'customerEmail')
+      WHERE customer_email IS NULL
+    `).catch(() => {});
+    await pgClient.query(`
+      UPDATE bookings
+      SET customer_phone = COALESCE(customer_phone, payload->>'customerPhone')
+      WHERE customer_phone IS NULL
+    `).catch(() => {});
+
+    await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`).catch(() => {});
+    await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_payment_status_check`).catch(() => {});
+    await pgClient.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_booking_type_check`).catch(() => {});
+
+    await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'booked', 'confirmed', 'cancelled', 'completed'))`).catch(() => {});
+    await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'))`).catch(() => {});
+    await pgClient.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_booking_type_check CHECK (booking_type IN ('room', 'hall'))`).catch(() => {});
+  };
+
   // Helper to normalize booking data from DB (snake_case) to standard camelCase format
   const normalizeDbBooking = (booking) => {
     if (!booking) return booking;
     
     // Parse booking_data JSON if it's a string
-    let bookingData = booking.booking_data;
+    let bookingData = booking.booking_data ?? booking.payload;
     if (typeof bookingData === 'string') {
       try {
         bookingData = JSON.parse(bookingData);
@@ -22,19 +100,19 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
 
     return {
       id: booking.id,
-      guestName: booking.customer_name || booking.customerName || '',
-      email: booking.customer_email || booking.customerEmail || '',
-      phone: booking.customer_phone || booking.customerPhone || '',
+      guestName: booking.customer_name || booking.customerName || bookingData.customerName || bookingData.guestName || '',
+      email: booking.customer_email || booking.customerEmail || bookingData.customerEmail || '',
+      phone: booking.customer_phone || booking.customerPhone || bookingData.customerPhone || '',
       roomName: bookingData.roomName || bookingData.room_name || '',
       roomId: bookingData.roomId || bookingData.room_id || '',
       checkIn: bookingData.checkIn || bookingData.check_in || '',
       checkOut: bookingData.checkOut || bookingData.check_out || '',
       nights: bookingData.nights || 0,
       guests: bookingData.guests || 0,
-      totalPrice: booking.total || booking.totalPrice || 0,
+      totalPrice: booking.total || booking.totalPrice || booking.total_price || 0,
       status: booking.status || 'pending',
       paymentStatus: booking.payment_status || booking.paymentStatus || 'pending',
-      bookingType: booking.booking_type || booking.bookingType || 'room',
+      bookingType: booking.booking_type || booking.bookingType || booking.type || 'room',
       createdAt: booking.created_at || booking.createdAt || '',
       updatedAt: booking.updated_at || booking.updatedAt || ''
     };
@@ -47,6 +125,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
     if (!email) return res.status(401).json({ error: 'unauthorized' });
     try {
       if (pgClient) {
+        await ensureBookingsTable();
         const { rows } = await pgClient.query(
           'SELECT * FROM bookings WHERE customer_email = $1 ORDER BY created_at DESC',
           [email]
@@ -65,6 +144,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
   router.get('/', authenticate, async (req, res) => {
     try {
       if (pgClient) {
+        await ensureBookingsTable();
         const { rows } = await pgClient.query('SELECT * FROM bookings ORDER BY created_at DESC');
         // normalize all bookings
         const normalized = rows.map(b => normalizeDbBooking(b));
@@ -81,6 +161,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
   // POST - create booking (public)
   router.post('/', async (req, res) => {
     try {
+      if (pgClient) {
+        await ensureBookingsTable();
+      }
       // normalize legacy flat booking properties (roomId, checkInDate, price, etc.)
       const incoming = { ...req.body };
       // ensure bookingData object exists
@@ -119,7 +202,7 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
       if (pgClient) {
         const q = `INSERT INTO bookings (id, customer_name, customer_email, customer_phone, booking_type, booking_data, total, payment_status, payment_data, status)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
-        const values = [id, payload.customerName, payload.customerEmail||null, payload.customerPhone||null, payload.bookingType, JSON.stringify(payload.bookingData||{}), payload.total, payload.paymentStatus, JSON.stringify(payload.paymentData||null), payload.status];
+        const values = [id, payload.customerName, payload.customerEmail || null, payload.customerPhone || null, payload.bookingType, JSON.stringify(payload.bookingData || {}), payload.total, payload.paymentStatus, JSON.stringify(payload.paymentData ?? null), payload.status];
         const { rows } = await pgClient.query(q, values);
         
         // Send confirmation email
@@ -166,6 +249,9 @@ module.exports = ({ pgClient, readJSON, writeJSON, bookingsPath, logger }) => {
   router.put('/:id', authenticate, async (req, res) => {
     try {
       const id = req.params.id;
+      if (pgClient) {
+        await ensureBookingsTable();
+      }
       const parsed = BookingUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ 

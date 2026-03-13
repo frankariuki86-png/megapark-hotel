@@ -141,32 +141,15 @@ export const UserProvider = ({ children }) => {
         return { ok: false, error: message };
       }
       const data = await resp.json();
-      const u = data.user;
-      setUser(u);
-
-      // Auto-login after successful registration to issue access token.
-      const loginResp = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      if (loginResp.ok) {
-        const loginData = await loginResp.json();
-        const at = loginData.accessToken;
-        if (at) {
-          localStorage.setItem('accessToken', at);
-          setAccessToken(at);
-          fetchOrderHistory(at);
-          fetchBookingHistory(at);
-        }
-      }
-
-      setIsAuthModalOpen(false);
-      return { ok: true, user: u };
+      return {
+        ok: true,
+        user: data.user,
+        message: data.message || 'Account created successfully. Please log in.'
+      };
     } catch (err) {
       return { ok: false, error: err.message || 'Registration failed' };
     }
-  }, [fetchBookingHistory, fetchOrderHistory]);
+  }, []);
 
   const login = useCallback(async (email, password) => {
     try {
