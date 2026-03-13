@@ -225,6 +225,12 @@
 }
 .btn-logout:hover { background: #c62828; transform: translateY(-1px); }
 
+.profile-logout-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* Profile Tabs */
 .profile-tabs {
   display: flex;
